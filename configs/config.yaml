@@ -56,7 +56,7 @@ creativity:
 decomposition:
   # Enable automatic issue decomposition for complex issues
   enabled: true
-  # Iteration budget for complexity estimation (hard limit is 20)
-  max_iteration_budget: 15
+  # Iteration budget — each API round-trip counts as 1 iteration
+  max_iteration_budget: 25
   # Maximum number of subtasks when decomposing
   max_subtasks: 5

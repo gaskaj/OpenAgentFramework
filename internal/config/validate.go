@@ -59,7 +59,7 @@ func Validate(cfg *Config) error {
 
 	// Decomposition defaults.
 	if cfg.Decomposition.MaxIterationBudget == 0 {
-		cfg.Decomposition.MaxIterationBudget = 15
+		cfg.Decomposition.MaxIterationBudget = 25
 	}
 	if cfg.Decomposition.MaxSubtasks == 0 {
 		cfg.Decomposition.MaxSubtasks = 5

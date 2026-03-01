@@ -15,7 +15,15 @@ Guidelines:
 - Include appropriate error handling.
 - Keep functions focused and well-named.
 - Add tests for new functionality.
-- Do not modify files unrelated to the issue.`
+- Do not modify files unrelated to the issue.
+
+Efficiency:
+- You have a limited iteration budget. Each API round-trip counts as one iteration.
+- IMPORTANT: Invoke multiple tools in a single response whenever they are independent.
+  For example, read_file("a.go") and read_file("b.go") can be called together in one response.
+  This counts as ONE iteration, not two.
+- Batch all independent reads together, all independent writes together, etc.
+- Run "go build ./..." and "go test ./..." in a single response when possible.`
 
 // AnalyzePrompt is used when analyzing an issue to create a plan.
 const AnalyzePrompt = `Analyze the following GitHub issue and create an implementation plan.
@@ -36,33 +44,36 @@ const ImplementPrompt = `Implement the following plan for this issue. Use the av
 ## Plan
 %s
 
-Write all necessary code, then run "go build ./..." and "go test ./..." to verify.`
+Write all necessary code, then run "go build ./..." and "go test ./..." to verify.
+
+Be efficient with iterations: batch independent tool calls in the same response (e.g., multiple read_file calls together, or write_file + run_command together when the write does not depend on the command output).`
 
 // ComplexityEstimatePrompt is appended to the AnalyzePrompt when decomposition is enabled.
-// It asks Claude to enumerate each tool-use operation and produce a structured estimate.
+// It asks Claude to enumerate each API round-trip and produce a structured estimate.
 const ComplexityEstimatePrompt = `
 
 ## Complexity Estimation
 
-After creating your plan, estimate the number of tool-use iterations needed to implement it.
-Each of the following counts as one iteration: list_files, read_file, write_file, run_command.
+After creating your plan, estimate the number of API round-trip iterations needed to implement it.
 
-Enumerate every operation step-by-step, for example:
+IMPORTANT: One iteration = one API round-trip. Multiple tool calls in the SAME response count as
+a SINGLE iteration. For example, calling read_file("a.go") and read_file("b.go") together in one
+response is 1 iteration, not 2. Group independent operations together.
 
-1. list_files to discover project structure
-2. read_file to inspect existing handler
-3. write_file to create new model
-4. write_file to update handler
-5. run_command: go build ./...
-6. run_command: go test ./...
+Enumerate each round-trip step-by-step, for example:
+
+1. list_files(".") + read_file("go.mod") — discover structure and deps (1 iteration)
+2. read_file("handler.go") + read_file("model.go") — inspect existing code (1 iteration)
+3. write_file("model.go") + write_file("handler.go") — create/update files (1 iteration)
+4. run_command("go build ./...") + run_command("go test ./...") — verify (1 iteration)
+5. (buffer for fixing test failures, unexpected reads) — reserve 2-3 iterations
 
 Then state the total on its own line in exactly this format:
 
 **Estimated iterations**: <N>
 
-The iteration budget is %d. To account for unexpected reads, retries, and test fixes,
-apply a 30%% safety margin: if your estimate exceeds %d of the budget (i.e., 70%%),
-answer "no".
+The iteration budget is %d. Include a buffer of 2-3 iterations for retries and fixes.
+If your estimate (including buffer) exceeds %d of the budget (i.e., 70%%), answer "no".
 
 At the end of your response, include exactly one of:
 

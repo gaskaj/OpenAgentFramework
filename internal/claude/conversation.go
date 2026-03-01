@@ -74,8 +74,25 @@ func (c *Conversation) Send(ctx context.Context, userMessage string) (string, er
 
 		// Check if we need to handle tool use.
 		if msg.StopReason != "tool_use" {
+			c.logger.Info("conversation complete", "iterations_used", i+1, "iterations_max", c.maxIter)
 			return ExtractText(msg), nil
 		}
+
+		// Count tool calls in this response for logging.
+		toolCount := 0
+		var toolNames []string
+		for _, block := range msg.Content {
+			if block.Type == "tool_use" {
+				toolCount++
+				toolNames = append(toolNames, block.Name)
+			}
+		}
+		c.logger.Info("iteration progress",
+			"iteration", i+1,
+			"max", c.maxIter,
+			"tools_in_response", toolCount,
+			"tool_names", toolNames,
+		)
 
 		// Process tool calls.
 		toolResults, err := c.processToolCalls(ctx, msg)
@@ -86,6 +103,7 @@ func (c *Conversation) Send(ctx context.Context, userMessage string) (string, er
 		c.messages = append(c.messages, anthropic.NewUserMessage(toolResults...))
 	}
 
+	c.logger.Warn("iteration budget exhausted", "iterations_max", c.maxIter)
 	return "", fmt.Errorf("%w (%d)", ErrMaxIterations, c.maxIter)
 }
 
