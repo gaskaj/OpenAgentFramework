@@ -318,11 +318,17 @@ func (d *DeveloperAgent) createToolExecutor(repo *gitops.Repo) claude.ToolExecut
 			}
 			return content, nil
 
+		case "edit_file":
+			return executeEditFile(repo, params)
+
 		case "write_file":
 			if err := repo.WriteFile(params["path"], params["content"]); err != nil {
 				return "", err
 			}
 			return "file written successfully", nil
+
+		case "search_files":
+			return executeSearchFiles(repo, params)
 
 		case "list_files":
 			files, err := repo.ListFiles(params["path"])
@@ -417,6 +423,94 @@ func extractFilePaths(plan string) []string {
 	return paths
 }
 
+// executeEditFile handles the edit_file tool: search-and-replace within a file.
+func executeEditFile(repo *gitops.Repo, params map[string]string) (string, error) {
+	path := params["path"]
+	oldStr := params["old_string"]
+	newStr := params["new_string"]
+
+	content, err := repo.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("reading %s: %w", path, err)
+	}
+
+	count := strings.Count(content, oldStr)
+	if count == 0 {
+		return "", fmt.Errorf("old_string not found in %s", path)
+	}
+	if count > 1 {
+		return "", fmt.Errorf("old_string appears %d times in %s (must be unique — include more surrounding context)", count, path)
+	}
+
+	updated := strings.Replace(content, oldStr, newStr, 1)
+	if err := repo.WriteFile(path, updated); err != nil {
+		return "", fmt.Errorf("writing %s: %w", path, err)
+	}
+	return "file edited successfully", nil
+}
+
+// searchableExtensions lists file extensions that search_files will inspect.
+var searchableExtensions = map[string]bool{
+	".go": true, ".yaml": true, ".yml": true, ".json": true,
+	".md": true, ".txt": true, ".mod": true, ".sum": true,
+	".toml": true, ".cfg": true, ".conf": true, ".sh": true,
+}
+
+// executeSearchFiles handles the search_files tool: grep across the workspace.
+func executeSearchFiles(repo *gitops.Repo, params map[string]string) (string, error) {
+	pattern := params["pattern"]
+	searchDir := repo.Dir()
+	if p, ok := params["path"]; ok && p != "" {
+		searchDir = filepath.Join(repo.Dir(), p)
+	}
+
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		// Fall back to literal match if pattern isn't valid regex.
+		re = regexp.MustCompile(regexp.QuoteMeta(pattern))
+	}
+
+	var results []string
+	_ = filepath.WalkDir(searchDir, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return nil
+		}
+		if d.IsDir() {
+			if strings.HasPrefix(d.Name(), ".") || d.Name() == "vendor" || d.Name() == "workspaces" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		ext := filepath.Ext(d.Name())
+		if !searchableExtensions[ext] {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(repo.Dir(), path)
+		lines := strings.Split(string(data), "\n")
+		for i, line := range lines {
+			if re.MatchString(line) {
+				results = append(results, fmt.Sprintf("%s:%d: %s", rel, i+1, strings.TrimRight(line, "\r")))
+			}
+		}
+		return nil
+	})
+
+	if len(results) == 0 {
+		return "no matches found", nil
+	}
+	// Cap to prevent huge outputs.
+	if len(results) > 50 {
+		total := len(results)
+		results = results[:50]
+		results = append(results, fmt.Sprintf("... (%d more matches not shown)", total-50))
+	}
+	return strings.Join(results, "\n"), nil
+}
+
 // preReadFiles reads files from the repo that are mentioned in the plan,
 // so Claude doesn't need to spend iterations reading them.
 func preReadFiles(repo *gitops.Repo, paths []string) string {
@@ -432,8 +526,8 @@ func preReadFiles(repo *gitops.Repo, paths []string) string {
 			continue // file doesn't exist yet, that's fine
 		}
 		// Truncate very large files.
-		if len(content) > 4000 {
-			content = content[:4000] + "\n... (truncated at 4000 chars)"
+		if len(content) > 15000 {
+			content = content[:15000] + "\n... (truncated at 15000 chars)"
 		}
 		sb.WriteString(fmt.Sprintf("### %s\n```go\n%s\n```\n\n", p, content))
 		count++

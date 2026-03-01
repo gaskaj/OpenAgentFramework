@@ -6,9 +6,10 @@ const SystemPrompt = `You are an autonomous developer agent. You write clean, pr
 Your workflow:
 1. Analyze the GitHub issue requirements carefully.
 2. Plan your implementation approach.
-3. Write code using the available tools (read_file, write_file, list_files, run_command).
+3. Write code using the available tools.
 4. Test your changes by running "go build ./..." and "go test ./...".
 5. Fix any compilation or test errors.
+6. Once build and tests pass, respond with a summary of changes (no tool calls) to finish.
 
 Guidelines:
 - Write idiomatic Go code following standard conventions.
@@ -17,13 +18,23 @@ Guidelines:
 - Add tests for new functionality.
 - Do not modify files unrelated to the issue.
 
+Tool preferences:
+- Use edit_file (not write_file) to modify existing files. edit_file replaces a specific string,
+  so you only touch the lines that change instead of rewriting the entire file.
+- Use write_file only for creating NEW files that don't exist yet.
+- Use search_files to find where functions, types, or variables are defined or used,
+  instead of reading multiple files one-by-one to search manually.
+- Use read_file when you need to see the full contents of a specific file.
+
 Efficiency:
 - You have a limited iteration budget. Each API round-trip counts as one iteration.
 - IMPORTANT: Invoke multiple tools in a single response whenever they are independent.
   For example, read_file("a.go") and read_file("b.go") can be called together in one response.
   This counts as ONE iteration, not two.
-- Batch all independent reads together, all independent writes together, etc.
-- Run "go build ./..." and "go test ./..." in a single response when possible.`
+- Batch all independent reads together, all independent edit_file calls together, etc.
+- Run "go build ./..." and "go test ./..." in a single run_command when possible:
+  run_command("go build ./... && go test ./...")
+- STOP as soon as build and tests pass — respond with text only (no tool calls) to finish.`
 
 // AnalyzePrompt is used when analyzing an issue to create a plan.
 const AnalyzePrompt = `Analyze the following GitHub issue and create an implementation plan.
@@ -36,7 +47,7 @@ Respond with a concise plan listing:
 3. Testing approach`
 
 // ImplementPrompt is used when implementing the planned changes.
-const ImplementPrompt = `Implement the following plan for this issue. Use the available tools to write files, then build and test.
+const ImplementPrompt = `Implement the following plan for this issue.
 
 ## Issue
 %s
@@ -44,9 +55,14 @@ const ImplementPrompt = `Implement the following plan for this issue. Use the av
 ## Plan
 %s
 
-Write all necessary code, then run "go build ./..." and "go test ./..." to verify.
+Instructions:
+1. Use edit_file to modify existing files (NOT write_file). Use write_file only for new files.
+2. Use search_files to find references instead of reading files one-by-one.
+3. After making changes, verify with: run_command("go build ./... && go test ./...")
+4. If build/tests fail, fix the errors and re-run.
+5. Once build and tests pass, respond with a summary of your changes (no tool calls) to finish.
 
-Be efficient with iterations: batch independent tool calls in the same response (e.g., multiple read_file calls together, or write_file + run_command together when the write does not depend on the command output).`
+Batch independent tool calls in the same response to save iterations.`
 
 // ComplexityEstimatePrompt is appended to the AnalyzePrompt when decomposition is enabled.
 // It asks Claude to enumerate each API round-trip and produce a structured estimate.
@@ -62,11 +78,15 @@ response is 1 iteration, not 2. Group independent operations together.
 
 Enumerate each round-trip step-by-step, for example:
 
-1. list_files(".") + read_file("go.mod") — discover structure and deps (1 iteration)
+1. search_files("functionName") + read_file("go.mod") — find references and deps (1 iteration)
 2. read_file("handler.go") + read_file("model.go") — inspect existing code (1 iteration)
-3. write_file("model.go") + write_file("handler.go") — create/update files (1 iteration)
-4. run_command("go build ./...") + run_command("go test ./...") — verify (1 iteration)
-5. (buffer for fixing test failures, unexpected reads) — reserve 2-3 iterations
+3. edit_file("model.go") + edit_file("handler.go") — modify files (1 iteration)
+4. write_file("new_test.go") — create new test file (1 iteration)
+5. run_command("go build ./... && go test ./...") — verify (1 iteration)
+6. (buffer for fixing test failures, unexpected reads) — reserve 2-3 iterations
+
+Note: edit_file modifies a specific section of a file (no need to read first), and search_files
+finds references across the codebase in one call. Factor these into your estimate.
 
 Then state the total on its own line in exactly this format:
 
