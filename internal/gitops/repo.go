@@ -1,0 +1,102 @@
+package gitops
+
+import (
+	"fmt"
+
+	"github.com/go-git/go-git/v5"
+	gitconfig "github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
+)
+
+// Repo wraps a go-git repository for common operations.
+type Repo struct {
+	repo      *git.Repository
+	worktree  *git.Worktree
+	dir       string
+	authToken string
+}
+
+// Clone clones a repository to the given directory.
+func Clone(url, dir, token string) (*Repo, error) {
+	repo, err := git.PlainClone(dir, false, &git.CloneOptions{
+		URL: url,
+		Auth: &http.BasicAuth{
+			Username: "x-access-token",
+			Password: token,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cloning repo: %w", err)
+	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		return nil, fmt.Errorf("getting worktree: %w", err)
+	}
+
+	return &Repo{repo: repo, worktree: wt, dir: dir, authToken: token}, nil
+}
+
+// Open opens an existing repository at the given directory.
+func Open(dir, token string) (*Repo, error) {
+	repo, err := git.PlainOpen(dir)
+	if err != nil {
+		return nil, fmt.Errorf("opening repo at %s: %w", dir, err)
+	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		return nil, fmt.Errorf("getting worktree: %w", err)
+	}
+
+	return &Repo{repo: repo, worktree: wt, dir: dir, authToken: token}, nil
+}
+
+// CheckoutBranch checks out the given branch, creating it if needed.
+func (r *Repo) CheckoutBranch(name string, create bool) error {
+	opts := &git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName(name),
+		Create: create,
+	}
+	if err := r.worktree.Checkout(opts); err != nil {
+		return fmt.Errorf("checking out branch %s: %w", name, err)
+	}
+	return nil
+}
+
+// Pull pulls the latest changes from the remote.
+func (r *Repo) Pull() error {
+	err := r.worktree.Pull(&git.PullOptions{
+		Auth: &http.BasicAuth{
+			Username: "x-access-token",
+			Password: r.authToken,
+		},
+	})
+	if err != nil && err != git.NoErrAlreadyUpToDate {
+		return fmt.Errorf("pulling: %w", err)
+	}
+	return nil
+}
+
+// Push pushes the current branch to the remote.
+func (r *Repo) Push() error {
+	err := r.repo.Push(&git.PushOptions{
+		Auth: &http.BasicAuth{
+			Username: "x-access-token",
+			Password: r.authToken,
+		},
+		RefSpecs: []gitconfig.RefSpec{
+			gitconfig.RefSpec("+refs/heads/*:refs/heads/*"),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("pushing: %w", err)
+	}
+	return nil
+}
+
+// Dir returns the working directory path.
+func (r *Repo) Dir() string {
+	return r.dir
+}
