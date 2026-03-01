@@ -257,7 +257,7 @@ func (d *DeveloperAgent) analyze(ctx context.Context, issueContext, repoContext 
 	// When decomposition is enabled, append complexity estimation to the prompt.
 	if d.Deps.Config.Decomposition.Enabled {
 		budget := d.Deps.Config.Decomposition.MaxIterationBudget
-		threshold := int(float64(budget) * 0.7) // 70% of budget
+		threshold := int(float64(budget) * 0.5) // 50% of budget
 		maxSubtasks := d.Deps.Config.Decomposition.MaxSubtasks
 		prompt += fmt.Sprintf(ComplexityEstimatePrompt, budget, threshold, maxSubtasks)
 	}

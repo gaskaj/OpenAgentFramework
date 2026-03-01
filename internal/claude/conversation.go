@@ -132,7 +132,7 @@ func (c *Conversation) processToolCalls(ctx context.Context, msg *anthropic.Mess
 		}
 
 		summary := summarizeToolCall(block.Name, block.Input)
-		c.logger.Info("executing tool", "tool", summary)
+		// c.logger.Info("executing tool", "tool", summary)
 
 		result, err := c.executor(ctx, block.Name, block.Input)
 		if err != nil {
@@ -146,7 +146,7 @@ func (c *Conversation) processToolCalls(ctx context.Context, msg *anthropic.Mess
 		}
 
 		truncated := truncateToolResult(result)
-		c.logger.Info("tool succeeded", "tool", block.Name, "result_bytes", len(result), "truncated", len(result) != len(truncated))
+		// c.logger.Info("tool succeeded", "tool", block.Name, "result_bytes", len(result), "truncated", len(result) != len(truncated))
 		results = append(results, anthropic.NewToolResultBlock(block.ID, truncated, false))
 	}
 

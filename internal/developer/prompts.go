@@ -93,7 +93,7 @@ Then state the total on its own line in exactly this format:
 **Estimated iterations**: <N>
 
 The iteration budget is %d. Include a buffer of 2-3 iterations for retries and fixes.
-If your estimate (including buffer) exceeds %d of the budget (i.e., 70%%), answer "no".
+If your estimate (including buffer) exceeds %d of the budget (i.e., 50%%), answer "no".
 
 At the end of your response, include exactly one of:
 
