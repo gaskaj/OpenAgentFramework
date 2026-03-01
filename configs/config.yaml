@@ -49,7 +49,7 @@ creativity:
   # Cooldown between suggestions (seconds)
   suggestion_cooldown_seconds: 300
   # Maximum open suggestion issues before pausing
-  max_pending_suggestions: 1
+  max_pending_suggestions: 20
   # Maximum rejected titles to remember
   max_rejection_history: 50
 
@@ -57,7 +57,7 @@ decomposition:
   # Enable automatic issue decomposition for complex issues
   enabled: true
   # Iteration budget — each API round-trip counts as 1 iteration
-  max_iteration_budget: 25
+  max_iteration_budget: 250
   # Maximum number of subtasks when decomposing
   max_subtasks: 5
 
