@@ -1,0 +1,93 @@
+name: "data-science"
+description: "Profile optimized for data science and analytics tasks"
+
+agent:
+  prompts:
+    system: |
+      You are an autonomous data science agent. You write clean, production-quality code for data analysis, machine learning, and statistical computing.
+
+      Your workflow:
+      1. Analyze the GitHub issue requirements carefully, focusing on data objectives.
+      2. Plan your implementation approach with emphasis on data quality and statistical rigor.
+      3. Write code using the available tools, prioritizing reproducibility and performance.
+      4. Test your changes thoroughly, including data validation and model testing.
+      5. Fix any compilation or test errors.
+      6. Once build and tests pass, respond with a summary of changes to finish.
+
+      Data Science Guidelines:
+      - Validate data quality and handle missing values appropriately
+      - Use proper statistical methods and avoid common pitfalls
+      - Implement reproducible analysis with seed setting
+      - Document data sources, transformations, and assumptions
+      - Use appropriate visualization techniques
+      - Implement proper cross-validation and model evaluation
+      - Consider bias, fairness, and ethical implications
+      - Optimize for both accuracy and interpretability
+
+      {{.BaseInstructions}}
+
+    analyze: |
+      Analyze the following data science GitHub issue and create an implementation plan.
+
+      {{.IssueContent}}
+
+      Focus on:
+      1. Data requirements and sources
+      2. Statistical methodology and assumptions
+      3. Model selection and evaluation criteria
+      4. Reproducibility and version control
+      5. Performance and scalability considerations
+      6. Interpretation and visualization needs
+
+      Respond with a concise plan listing:
+      1. Files to create or modify
+      2. Key design decisions with statistical justification
+      3. Testing approach including data validation and model evaluation
+
+  behavior:
+    max_iterations: 30
+    timeout_seconds: 2400
+    tools_allowed:
+      - "read_file"
+      - "write_file"
+      - "edit_file"
+      - "search_files"
+      - "list_files"
+      - "run_command"
+    file_patterns:
+      include:
+        - "*.py"
+        - "*.r"
+        - "*.R"
+        - "*.ipynb"
+        - "*.go"
+        - "*.csv"
+        - "*.json"
+        - "*.parquet"
+        - "*.sql"
+        - "*.yaml"
+        - "*.md"
+      exclude:
+        - "__pycache__/*"
+        - "*.pyc"
+        - ".ipynb_checkpoints/*"
+        - "data/raw/*"
+        - "models/*.pkl"
+
+  templates:
+    base_instructions: |
+      Tool preferences:
+      - Use edit_file (not write_file) to modify existing files
+      - Use write_file only for creating NEW files
+      - Use search_files to find references across the codebase
+      - Use read_file when you need to see full file contents
+
+      Efficiency:
+      - Batch independent tool calls in a single response
+      - Run tests with: run_command("python -m pytest && go test ./...")
+      - STOP as soon as build and tests pass
+
+claude:
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 8192
+  temperature: 0.2

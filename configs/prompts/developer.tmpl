@@ -1,0 +1,60 @@
+{{/* System Prompt Template */}}
+{{define "system"}}
+{{.SystemPrompt}}
+{{end}}
+
+{{/* Analysis Prompt Template */}}
+{{define "analyze"}}
+{{.AnalyzePrompt}}
+
+{{.IssueContent}}
+
+{{if .ComplexityEstimationEnabled}}
+{{.ComplexityEstimatePrompt}}
+{{end}}
+{{end}}
+
+{{/* Implementation Prompt Template */}}
+{{define "implement"}}
+{{.ImplementPrompt}}
+
+## Issue
+{{.IssueContent}}
+
+## Plan
+{{.Plan}}
+
+{{if .AdditionalInstructions}}
+## Additional Instructions
+{{.AdditionalInstructions}}
+{{end}}
+
+{{.InstructionFooter}}
+{{end}}
+
+{{/* Decomposition Prompt Template */}}
+{{define "decompose"}}
+{{.DecomposePrompt}}
+
+## Issue
+{{.IssueContent}}
+
+## Plan
+{{.Plan}}
+{{end}}
+
+{{/* Reactive Decomposition Prompt Template */}}
+{{define "reactive_decompose"}}
+{{.ReactiveDecomposePrompt}}
+
+## Original Issue
+{{.IssueContent}}
+
+## Plan
+{{.Plan}}
+
+{{if .RuntimeContext}}
+## Runtime Context
+{{.RuntimeContext}}
+{{end}}
+{{end}}

@@ -238,28 +238,29 @@ func (d *DeveloperAgent) claimIssue(ctx context.Context, number int) error {
 }
 
 func (d *DeveloperAgent) analyze(ctx context.Context, issueContext, repoContext string) (plan string, tooComplex bool, err error) {
+	systemPrompt, err := d.promptRenderer.RenderSystemPrompt()
+	if err != nil {
+		return "", false, fmt.Errorf("rendering system prompt: %w", err)
+	}
+
 	conv := claude.NewConversation(
 		d.Deps.Claude,
-		SystemPrompt,
+		systemPrompt,
 		nil, // no tools for analysis
 		nil,
 		d.Deps.Logger,
 		0, // no tools, single-turn — limit doesn't apply
 	)
 
-	prompt := fmt.Sprintf(AnalyzePrompt, issueContext)
+	withComplexity := d.Deps.Config.Decomposition.Enabled
+	prompt, err := d.promptRenderer.RenderAnalyzePrompt(issueContext, withComplexity)
+	if err != nil {
+		return "", false, fmt.Errorf("rendering analyze prompt: %w", err)
+	}
 
 	// Inject codebase structure so the plan is based on real files.
 	if repoContext != "" {
 		prompt += "\n\n" + repoContext
-	}
-
-	// When decomposition is enabled, append complexity estimation to the prompt.
-	if d.Deps.Config.Decomposition.Enabled {
-		budget := d.Deps.Config.Decomposition.MaxIterationBudget
-		threshold := int(float64(budget) * 0.5) // 50% of budget
-		maxSubtasks := d.Deps.Config.Decomposition.MaxSubtasks
-		prompt += fmt.Sprintf(ComplexityEstimatePrompt, budget, threshold, maxSubtasks)
 	}
 
 	response, err := conv.Send(ctx, prompt)
@@ -277,22 +278,31 @@ func (d *DeveloperAgent) analyze(ctx context.Context, issueContext, repoContext 
 func (d *DeveloperAgent) implement(ctx context.Context, repo *gitops.Repo, issueContext, plan, repoContext string) error {
 	executor := d.createToolExecutor(repo)
 
-	// Use the configured iteration budget when decomposition is enabled; default otherwise.
-	maxIter := 0
-	if d.Deps.Config.Decomposition.Enabled {
+	// Get behavior config from profile or defaults
+	behavior := d.promptRenderer.GetBehaviorConfig()
+	maxIter := behavior.MaxIterations
+	if d.Deps.Config.Decomposition.Enabled && d.Deps.Config.Decomposition.MaxIterationBudget > 0 {
 		maxIter = d.Deps.Config.Decomposition.MaxIterationBudget
+	}
+
+	systemPrompt, err := d.promptRenderer.RenderSystemPrompt()
+	if err != nil {
+		return fmt.Errorf("rendering system prompt: %w", err)
 	}
 
 	conv := claude.NewConversation(
 		d.Deps.Claude,
-		SystemPrompt,
+		systemPrompt,
 		claude.DevTools(),
 		executor,
 		d.Deps.Logger,
 		maxIter,
 	)
 
-	prompt := fmt.Sprintf(ImplementPrompt, issueContext, plan)
+	prompt, err := d.promptRenderer.RenderImplementPrompt(issueContext, plan)
+	if err != nil {
+		return fmt.Errorf("rendering implement prompt: %w", err)
+	}
 
 	// Inject codebase structure so Claude doesn't waste iterations discovering it.
 	if repoContext != "" {
@@ -305,7 +315,7 @@ func (d *DeveloperAgent) implement(ctx context.Context, repo *gitops.Repo, issue
 		prompt += "\n\n" + preRead
 	}
 
-	_, err := conv.Send(ctx, prompt)
+	_, err = conv.Send(ctx, prompt)
 	return err
 }
 

@@ -44,6 +44,7 @@ type StatusReport struct {
 // Dependencies holds shared dependencies injected into agents.
 type Dependencies struct {
 	Config            *config.Config
+	Profile           *config.AgentProfile
 	GitHub            ghub.Client
 	Claude            *claude.Client
 	Store             state.Store

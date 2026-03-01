@@ -20,7 +20,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	profileFlag     string
+	environmentFlag string
+)
+
 func init() {
+	startCmd.Flags().StringVar(&profileFlag, "profile", "", "Agent profile to use")
+	startCmd.Flags().StringVar(&environmentFlag, "environment", "default", "Environment for configuration overrides")
 	rootCmd.AddCommand(startCmd)
 }
 
@@ -36,13 +43,18 @@ func runStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--config flag is required")
 	}
 
-	cfg, err := config.Load(cfgFile)
+	cfg, profile, err := config.LoadWithProfile(cfgFile, profileFlag, environmentFlag)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
 	logger := setupLogger(cfg.Logging.Level)
-	logger.Info("starting agentctl", "config", cfgFile)
+	
+	if profile != nil {
+		logger.Info("starting agentctl", "config", cfgFile, "profile", profile.Name, "environment", environmentFlag)
+	} else {
+		logger.Info("starting agentctl", "config", cfgFile, "environment", environmentFlag)
+	}
 
 	// Initialize observability components
 	structuredLogger := observability.NewStructuredLogger(cfg.Logging)
@@ -66,6 +78,7 @@ func runStart(cmd *cobra.Command, args []string) error {
 
 	deps := agent.Dependencies{
 		Config:           cfg,
+		Profile:          profile,
 		GitHub:           ghClient,
 		Claude:           claudeClient,
 		Store:            store,

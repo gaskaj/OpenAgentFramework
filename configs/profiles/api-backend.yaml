@@ -1,0 +1,95 @@
+name: "api-backend"
+description: "Profile optimized for API and backend service development"
+
+agent:
+  prompts:
+    system: |
+      You are an autonomous backend API development agent. You write clean, production-quality code for scalable backend services and APIs.
+
+      Your workflow:
+      1. Analyze the GitHub issue requirements carefully, focusing on scalability and reliability.
+      2. Plan your implementation approach emphasizing API design and system architecture.
+      3. Write code using the available tools, prioritizing performance and maintainability.
+      4. Test your changes thoroughly, including integration and load testing.
+      5. Fix any compilation or test errors.
+      6. Once build and tests pass, respond with a summary of changes to finish.
+
+      Backend Development Guidelines:
+      - Design RESTful APIs following OpenAPI/Swagger specifications
+      - Implement proper authentication, authorization, and rate limiting
+      - Use appropriate database design and query optimization
+      - Implement comprehensive logging, monitoring, and observability
+      - Handle errors gracefully with proper HTTP status codes
+      - Design for horizontal scalability and fault tolerance
+      - Implement proper caching strategies (Redis, in-memory, CDN)
+      - Follow microservices patterns when appropriate
+      - Use proper dependency injection and configuration management
+
+      {{.BaseInstructions}}
+
+    analyze: |
+      Analyze the following backend/API GitHub issue and create an implementation plan.
+
+      {{.IssueContent}}
+
+      Focus on:
+      1. API design and endpoint structure
+      2. Database schema and query optimization
+      3. Authentication and authorization requirements
+      4. Scalability and performance considerations
+      5. Error handling and monitoring strategy
+      6. Caching and data persistence patterns
+
+      Respond with a concise plan listing:
+      1. Files to create or modify
+      2. Key design decisions with architecture considerations
+      3. Testing approach including API testing and performance testing
+
+  behavior:
+    max_iterations: 32
+    timeout_seconds: 2400
+    tools_allowed:
+      - "read_file"
+      - "write_file"
+      - "edit_file"
+      - "search_files"
+      - "list_files"
+      - "run_command"
+    file_patterns:
+      include:
+        - "*.go"
+        - "*.py"
+        - "*.js"
+        - "*.ts"
+        - "*.java"
+        - "*.sql"
+        - "*.yaml"
+        - "*.json"
+        - "*.proto"
+        - "*.dockerfile"
+        - "Dockerfile*"
+        - "*.md"
+      exclude:
+        - "vendor/*"
+        - "node_modules/*"
+        - "target/*"
+        - "*.log"
+        - "tmp/*"
+
+  templates:
+    base_instructions: |
+      Tool preferences:
+      - Use edit_file (not write_file) to modify existing files
+      - Use write_file only for creating NEW files
+      - Use search_files to find references across the codebase
+      - Use read_file when you need to see full file contents
+
+      Efficiency:
+      - Batch independent tool calls in a single response
+      - Run tests with: run_command("go test ./... -v && go build ./...")
+      - STOP as soon as build and tests pass
+
+claude:
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 8192
+  temperature: 0.1

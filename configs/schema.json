@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent Configuration Profile",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Profile name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Profile description"
+    },
+    "extends": {
+      "type": "string",
+      "description": "Parent profile to inherit from"
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "prompts": {
+          "type": "object",
+          "properties": {
+            "system": {
+              "type": "string",
+              "description": "System prompt template"
+            },
+            "analyze": {
+              "type": "string",
+              "description": "Analysis prompt template"
+            },
+            "implement": {
+              "type": "string",
+              "description": "Implementation prompt template"
+            },
+            "complexity_estimate": {
+              "type": "string",
+              "description": "Complexity estimation prompt template"
+            },
+            "decompose": {
+              "type": "string",
+              "description": "Decomposition prompt template"
+            },
+            "reactive_decompose": {
+              "type": "string",
+              "description": "Reactive decomposition prompt template"
+            }
+          }
+        },
+        "behavior": {
+          "type": "object",
+          "properties": {
+            "max_iterations": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum iterations per task"
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "minimum": 30,
+              "description": "Task timeout in seconds"
+            },
+            "retry_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Retry count for failed operations"
+            },
+            "tools_allowed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of allowed tool names"
+            },
+            "file_patterns": {
+              "type": "object",
+              "properties": {
+                "include": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "File patterns to include"
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "File patterns to exclude"
+                }
+              }
+            }
+          }
+        },
+        "templates": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Template variables and their values"
+        }
+      }
+    },
+    "claude": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "Claude model to use"
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum tokens per response"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Response temperature"
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Environment-specific overrides"
+    }
+  },
+  "required": ["name"]
+}

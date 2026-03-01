@@ -139,3 +139,13 @@ error_handling:
         max_requests: 3
         failure_ratio: 0.5
         min_requests: 10
+
+profiles:
+  # Enable configuration-driven agent behavior
+  enabled: true
+  # Directory containing profile YAML files
+  profiles_dir: "configs/profiles"
+  # Directory containing prompt templates
+  prompts_dir: "configs/prompts"
+  # Default profile to use when none specified
+  default_profile: "web-development"

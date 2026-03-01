@@ -145,18 +145,25 @@ func (d *DeveloperAgent) decompose(ctx context.Context, issueNum int, issueConte
 
 	// If no subtasks found in the plan, make a separate Claude call.
 	if len(subtasks) == 0 {
+		systemPrompt, err := d.promptRenderer.RenderSystemPrompt()
+		if err != nil {
+			return nil, fmt.Errorf("rendering system prompt: %w", err)
+		}
+
 		conv := claude.NewConversation(
 			d.Deps.Claude,
-			SystemPrompt,
+			systemPrompt,
 			nil,
 			nil,
 			d.Deps.Logger,
 			0, // no tools, single-turn — limit doesn't apply
 		)
 
-		maxSubtasks := d.Deps.Config.Decomposition.MaxSubtasks
-		budget := d.Deps.Config.Decomposition.MaxIterationBudget
-		prompt := fmt.Sprintf(DecomposePrompt, budget, issueContext, plan, maxSubtasks)
+		prompt, err := d.promptRenderer.RenderDecomposePrompt(issueContext, plan)
+		if err != nil {
+			return nil, fmt.Errorf("rendering decompose prompt: %w", err)
+		}
+		
 		response, err := conv.Send(ctx, prompt)
 		if err != nil {
 			return nil, fmt.Errorf("decomposition call failed: %w", err)
@@ -206,17 +213,25 @@ func (d *DeveloperAgent) decompose(ctx context.Context, issueNum int, issueConte
 func (d *DeveloperAgent) reactiveDecompose(ctx context.Context, issueNum int, issueContext, plan string) ([]int, error) {
 	d.updateStatus(state.StateDecompose, issueNum, "decomposing remaining work after iteration limit")
 
+	systemPrompt, err := d.promptRenderer.RenderSystemPrompt()
+	if err != nil {
+		return nil, fmt.Errorf("rendering system prompt: %w", err)
+	}
+
 	conv := claude.NewConversation(
 		d.Deps.Claude,
-		SystemPrompt,
+		systemPrompt,
 		nil,
 		nil,
 		d.Deps.Logger,
 		0, // no tools, single-turn — limit doesn't apply
 	)
 
-	maxSubtasks := d.Deps.Config.Decomposition.MaxSubtasks
-	prompt := fmt.Sprintf(ReactiveDecomposePrompt, issueContext, plan, maxSubtasks)
+	prompt, err := d.promptRenderer.RenderReactiveDecomposePrompt(issueContext, plan)
+	if err != nil {
+		return nil, fmt.Errorf("rendering reactive decompose prompt: %w", err)
+	}
+	
 	response, err := conv.Send(ctx, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("reactive decomposition call failed: %w", err)
@@ -228,6 +243,7 @@ func (d *DeveloperAgent) reactiveDecompose(ctx context.Context, issueNum int, is
 	}
 
 	// Cap at MaxSubtasks.
+	maxSubtasks := d.Deps.Config.Decomposition.MaxSubtasks
 	if len(subtasks) > maxSubtasks {
 		subtasks = subtasks[:maxSubtasks]
 	}

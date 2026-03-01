@@ -21,6 +21,7 @@ type Config struct {
 	Creativity    CreativityConfig    `mapstructure:"creativity"`
 	Decomposition DecompositionConfig `mapstructure:"decomposition"`
 	ErrorHandling ErrorHandlingConfig `mapstructure:"error_handling"`
+	Profiles      ProfilesConfig      `mapstructure:"profiles"`
 }
 
 // GitHubConfig holds GitHub-related configuration.
@@ -178,6 +179,58 @@ type CircuitBreakerConfigSpec struct {
 	MaxRequests  int64         `mapstructure:"max_requests"`
 	FailureRatio float64       `mapstructure:"failure_ratio"`
 	MinRequests  int64         `mapstructure:"min_requests"`
+}
+
+// ProfilesConfig holds profile system configuration.
+type ProfilesConfig struct {
+	Enabled      bool   `mapstructure:"enabled"`
+	ProfilesDir  string `mapstructure:"profiles_dir"`
+	PromptsDir   string `mapstructure:"prompts_dir"`
+	DefaultProfile string `mapstructure:"default_profile"`
+}
+
+// LoadWithProfile reads configuration from the given file path and applies the specified profile.
+func LoadWithProfile(configPath, profileName, environment string) (*Config, *AgentProfile, error) {
+	cfg, err := Load(configPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Set default profile directories if not configured
+	if cfg.Profiles.ProfilesDir == "" {
+		cfg.Profiles.ProfilesDir = "configs/profiles"
+	}
+	if cfg.Profiles.PromptsDir == "" {
+		cfg.Profiles.PromptsDir = "configs/prompts"
+	}
+
+	// Skip profile loading if profiles are disabled
+	if !cfg.Profiles.Enabled {
+		return cfg, nil, nil
+	}
+
+	// Use default profile if none specified
+	if profileName == "" {
+		profileName = cfg.Profiles.DefaultProfile
+	}
+
+	// Load profile if specified
+	if profileName != "" {
+		pm := NewProfileManager(cfg.Profiles.ProfilesDir)
+		profile, err := pm.LoadProfile(profileName)
+		if err != nil {
+			return nil, nil, fmt.Errorf("loading profile %s: %w", profileName, err)
+		}
+
+		// Apply profile to base config
+		if err := pm.ApplyToBaseConfig(cfg, profile, environment); err != nil {
+			return nil, nil, fmt.Errorf("applying profile to config: %w", err)
+		}
+
+		return cfg, profile, nil
+	}
+
+	return cfg, nil, nil
 }
 
 // Load reads configuration from the given file path, expanding environment variables.

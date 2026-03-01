@@ -1,7 +1,14 @@
 package developer
 
-// SystemPrompt is the base system prompt for the developer agent.
-const SystemPrompt = `You are an autonomous developer agent. You write clean, production-quality Go code.
+import (
+	"fmt"
+
+	"github.com/gaskaj/DeveloperAndQAAgent/internal/config"
+)
+
+// Default prompts - used as fallbacks when no profile is configured
+const (
+	DefaultSystemPrompt = `You are an autonomous developer agent. You write clean, production-quality Go code.
 
 Your workflow:
 1. Analyze the GitHub issue requirements carefully.
@@ -36,8 +43,7 @@ Efficiency:
   run_command("go build ./... && go test ./...")
 - STOP as soon as build and tests pass — respond with text only (no tool calls) to finish.`
 
-// AnalyzePrompt is used when analyzing an issue to create a plan.
-const AnalyzePrompt = `Analyze the following GitHub issue and create an implementation plan.
+	DefaultAnalyzePrompt = `Analyze the following GitHub issue and create an implementation plan.
 
 %s
 
@@ -46,8 +52,7 @@ Respond with a concise plan listing:
 2. Key design decisions
 3. Testing approach`
 
-// ImplementPrompt is used when implementing the planned changes.
-const ImplementPrompt = `Implement the following plan for this issue.
+	DefaultImplementPrompt = `Implement the following plan for this issue.
 
 ## Issue
 %s
@@ -64,9 +69,7 @@ Instructions:
 
 Batch independent tool calls in the same response to save iterations.`
 
-// ComplexityEstimatePrompt is appended to the AnalyzePrompt when decomposition is enabled.
-// It asks Claude to enumerate each API round-trip and produce a structured estimate.
-const ComplexityEstimatePrompt = `
+	DefaultComplexityEstimatePrompt = `
 
 ## Complexity Estimation
 
@@ -114,9 +117,7 @@ If the answer is "no", also include a decomposition plan using this format:
 (and so on, up to %d subtasks)
 `
 
-// DecomposePrompt is used for standalone decomposition calls when the analyze step
-// did not include a decomposition plan.
-const DecomposePrompt = `The following GitHub issue is too complex to implement in a single pass (iteration budget: %d).
+	DefaultDecomposePrompt = `The following GitHub issue is too complex to implement in a single pass (iteration budget: %d).
 
 Break it into smaller, independently implementable subtasks.
 
@@ -140,9 +141,7 @@ Respond with a decomposition plan using this exact format:
 
 Each subtask should be self-contained and result in a working, testable change.`
 
-// ReactiveDecomposePrompt is used when the iteration limit is hit at runtime.
-// It asks Claude to decompose the remaining work.
-const ReactiveDecomposePrompt = `The implementation of the following issue ran out of iteration budget before completing.
+	DefaultReactiveDecomposePrompt = `The implementation of the following issue ran out of iteration budget before completing.
 
 ## Original Issue
 %s
@@ -165,3 +164,110 @@ Respond with a decomposition plan using this exact format:
 (up to %d subtasks)
 
 Each subtask should be self-contained and result in a working, testable change. Focus on what still needs to be done, not what was already completed.`
+)
+
+// PromptRenderer handles rendering of prompts with configuration support.
+type PromptRenderer struct {
+	config         *config.Config
+	profile        *config.AgentProfile
+	templateEngine *config.TemplateEngine
+}
+
+// NewPromptRenderer creates a new prompt renderer.
+func NewPromptRenderer(cfg *config.Config, profile *config.AgentProfile) (*PromptRenderer, error) {
+	var templateEngine *config.TemplateEngine
+	if cfg.Profiles.Enabled && cfg.Profiles.PromptsDir != "" {
+		templateEngine = config.NewTemplateEngine(cfg.Profiles.PromptsDir)
+	}
+
+	return &PromptRenderer{
+		config:         cfg,
+		profile:        profile,
+		templateEngine: templateEngine,
+	}, nil
+}
+
+// RenderSystemPrompt renders the system prompt.
+func (pr *PromptRenderer) RenderSystemPrompt() (string, error) {
+	if pr.profile != nil && pr.profile.Agent.Prompts.System != "" {
+		return pr.profile.Agent.Prompts.System, nil
+	}
+	return DefaultSystemPrompt, nil
+}
+
+// RenderAnalyzePrompt renders the analysis prompt.
+func (pr *PromptRenderer) RenderAnalyzePrompt(issueContent string, withComplexityEstimation bool) (string, error) {
+	basePrompt := DefaultAnalyzePrompt
+	if pr.profile != nil && pr.profile.Agent.Prompts.Analyze != "" {
+		basePrompt = pr.profile.Agent.Prompts.Analyze
+	}
+
+	prompt := fmt.Sprintf(basePrompt, issueContent)
+
+	if withComplexityEstimation {
+		complexityPrompt := DefaultComplexityEstimatePrompt
+		if pr.profile != nil && pr.profile.Agent.Prompts.ComplexityEstimate != "" {
+			complexityPrompt = pr.profile.Agent.Prompts.ComplexityEstimate
+		}
+
+		budget := pr.config.Decomposition.MaxIterationBudget
+		halfBudget := budget / 2
+		maxSubtasks := pr.config.Decomposition.MaxSubtasks
+
+		prompt += fmt.Sprintf(complexityPrompt, budget, halfBudget, maxSubtasks)
+	}
+
+	return prompt, nil
+}
+
+// RenderImplementPrompt renders the implementation prompt.
+func (pr *PromptRenderer) RenderImplementPrompt(issueContent, plan string) (string, error) {
+	basePrompt := DefaultImplementPrompt
+	if pr.profile != nil && pr.profile.Agent.Prompts.Implement != "" {
+		basePrompt = pr.profile.Agent.Prompts.Implement
+	}
+
+	return fmt.Sprintf(basePrompt, issueContent, plan), nil
+}
+
+// RenderDecomposePrompt renders the decomposition prompt.
+func (pr *PromptRenderer) RenderDecomposePrompt(issueContent, plan string) (string, error) {
+	basePrompt := DefaultDecomposePrompt
+	if pr.profile != nil && pr.profile.Agent.Prompts.Decompose != "" {
+		basePrompt = pr.profile.Agent.Prompts.Decompose
+	}
+
+	budget := pr.config.Decomposition.MaxIterationBudget
+	maxSubtasks := pr.config.Decomposition.MaxSubtasks
+
+	return fmt.Sprintf(basePrompt, budget, issueContent, plan, maxSubtasks), nil
+}
+
+// RenderReactiveDecomposePrompt renders the reactive decomposition prompt.
+func (pr *PromptRenderer) RenderReactiveDecomposePrompt(issueContent, plan string) (string, error) {
+	basePrompt := DefaultReactiveDecomposePrompt
+	if pr.profile != nil && pr.profile.Agent.Prompts.ReactiveDecompose != "" {
+		basePrompt = pr.profile.Agent.Prompts.ReactiveDecompose
+	}
+
+	maxSubtasks := pr.config.Decomposition.MaxSubtasks
+
+	return fmt.Sprintf(basePrompt, issueContent, plan, maxSubtasks), nil
+}
+
+// GetBehaviorConfig returns the behavior configuration from the profile or defaults.
+func (pr *PromptRenderer) GetBehaviorConfig() config.BehaviorConfig {
+	if pr.profile != nil && (pr.profile.Agent.Behavior.MaxIterations > 0 || 
+		pr.profile.Agent.Behavior.TimeoutSeconds > 0 ||
+		len(pr.profile.Agent.Behavior.ToolsAllowed) > 0) {
+		return pr.profile.Agent.Behavior
+	}
+
+	// Return reasonable defaults
+	return config.BehaviorConfig{
+		MaxIterations:  25,
+		TimeoutSeconds: 1800,
+		RetryCount:     3,
+		ToolsAllowed:   []string{"read_file", "write_file", "edit_file", "search_files", "list_files", "run_command"},
+	}
+}

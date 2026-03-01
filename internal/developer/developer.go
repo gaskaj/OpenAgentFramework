@@ -2,6 +2,7 @@ package developer
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -15,12 +16,19 @@ import (
 // DeveloperAgent monitors GitHub for issues and implements solutions.
 type DeveloperAgent struct {
 	agent.BaseAgent
-	poller *ghub.Poller
-	status agent.StatusReport
+	poller         *ghub.Poller
+	status         agent.StatusReport
+	promptRenderer *PromptRenderer
 }
 
 // New creates a new DeveloperAgent.
 func New(deps agent.Dependencies) (agent.Agent, error) {
+	// Initialize prompt renderer
+	promptRenderer, err := NewPromptRenderer(deps.Config, deps.Profile)
+	if err != nil {
+		return nil, fmt.Errorf("initializing prompt renderer: %w", err)
+	}
+
 	da := &DeveloperAgent{
 		BaseAgent: agent.NewBaseAgent(deps),
 		status: agent.StatusReport{
@@ -28,6 +36,7 @@ func New(deps agent.Dependencies) (agent.Agent, error) {
 			State:   string(state.StateIdle),
 			Message: "waiting for issues",
 		},
+		promptRenderer: promptRenderer,
 	}
 
 	da.poller = ghub.NewPoller(
