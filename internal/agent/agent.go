@@ -1,0 +1,59 @@
+package agent
+
+import (
+	"context"
+	"log/slog"
+
+	"github.com/gaskaj/DeveloperAndQAAgent/internal/claude"
+	"github.com/gaskaj/DeveloperAndQAAgent/internal/config"
+	"github.com/gaskaj/DeveloperAndQAAgent/internal/ghub"
+	"github.com/gaskaj/DeveloperAndQAAgent/internal/state"
+)
+
+// AgentType identifies the kind of agent.
+type AgentType string
+
+const (
+	TypeDeveloper  AgentType = "developer"
+	TypeQA         AgentType = "qa"
+	TypeDevManager AgentType = "devmanager"
+)
+
+// Agent is the interface that all agent types must implement.
+type Agent interface {
+	// Type returns the agent type identifier.
+	Type() AgentType
+
+	// Run starts the agent's main loop. It blocks until the context is cancelled.
+	Run(ctx context.Context) error
+
+	// Status returns the agent's current status report.
+	Status() StatusReport
+}
+
+// StatusReport describes the current state of an agent.
+type StatusReport struct {
+	Type    AgentType `json:"type"`
+	State   string    `json:"state"`
+	IssueID int       `json:"issue_id,omitempty"`
+	Message string    `json:"message"`
+}
+
+// Dependencies holds shared dependencies injected into agents.
+type Dependencies struct {
+	Config *config.Config
+	GitHub ghub.Client
+	Claude *claude.Client
+	Store  state.Store
+	Logger *slog.Logger
+}
+
+// BaseAgent provides common functionality for all agents.
+type BaseAgent struct {
+	Deps Dependencies
+}
+
+// NewBaseAgent creates a BaseAgent with the given dependencies.
+func NewBaseAgent(deps Dependencies) BaseAgent {
+	return BaseAgent{Deps: deps}
+}

@@ -1,0 +1,42 @@
+# DeveloperAndQAAgent Configuration
+#
+# Environment variables can be used with ${VAR_NAME} syntax.
+
+github:
+  # Personal access token (repo scope required)
+  token: "${GITHUB_TOKEN}"
+  # Repository owner
+  owner: "gaskaj"
+  # Repository name
+  repo: "DeveloperAndQAAgent"
+  # Polling interval for new events
+  poll_interval: "30s"
+  # Labels to watch for claimable issues
+  watch_labels:
+    - "agent:ready"
+
+claude:
+  # Anthropic API key
+  api_key: "${ANTHROPIC_API_KEY}"
+  # Model to use
+  model: "claude-sonnet-4-20250514"
+  # Maximum tokens per response
+  max_tokens: 8192
+
+agents:
+  developer:
+    enabled: true
+    # Maximum concurrent issues to work on
+    max_concurrent: 1
+    # Directory for cloned workspaces
+    workspace_dir: "./workspaces"
+
+state:
+  # State storage backend: "file"
+  backend: "file"
+  # Directory for state files
+  dir: ".agentctl/state"
+
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
