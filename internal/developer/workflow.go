@@ -393,7 +393,7 @@ func (d *DeveloperAgent) handleGracefulShutdown(ctx context.Context, ws *state.A
 	
 	// Log workflow transition
 	if d.Deps.StructuredLogger != nil {
-		d.Deps.StructuredLogger.LogWorkflowTransition(ctx, ws.IssueNumber, ws.State, "interrupted", "graceful_shutdown")
+		d.Deps.StructuredLogger.LogWorkflowTransition(ctx, ws.IssueNumber, string(ws.State), "interrupted", "graceful_shutdown")
 	}
 	
 	return ctx.Err()

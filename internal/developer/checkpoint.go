@@ -62,7 +62,7 @@ func (cm *CheckpointManager) RestoreCheckpoint(ctx context.Context, agentType st
 		"issue", issueNum)
 
 	// Load the workflow state
-	ws, err := cm.store.Load(ctx, agentType, issueNum)
+	ws, err := cm.store.Load(ctx, agentType)
 	if err != nil {
 		return nil, fmt.Errorf("loading checkpoint for issue %d: %w", issueNum, err)
 	}

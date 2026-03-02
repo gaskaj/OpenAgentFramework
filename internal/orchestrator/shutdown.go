@@ -140,15 +140,15 @@ func (sm *ShutdownManager) saveCheckpoints(ctx context.Context) error {
 		}
 
 		status := a.Status()
-		if status.State == state.StateIdle {
+		if status.State == string(state.StateIdle) {
 			continue // No active work to checkpoint
 		}
 
 		// Create a checkpoint record
 		checkpoint := &state.AgentWorkState{
 			AgentType:      string(a.Type()),
-			IssueNumber:    status.IssueNumber,
-			State:          status.State,
+			IssueNumber:    status.IssueID,
+			State:          state.WorkflowState(status.State),
 			UpdatedAt:      time.Now(),
 			CheckpointedAt: time.Now(),
 			InterruptedBy:  "graceful_shutdown",
@@ -157,14 +157,14 @@ func (sm *ShutdownManager) saveCheckpoints(ctx context.Context) error {
 		if err := sm.store.Save(ctx, checkpoint); err != nil {
 			sm.logger.Error("failed to save checkpoint",
 				"agent", a.Type(),
-				"issue", status.IssueNumber,
+				"issue", status.IssueID,
 				"error", err)
 			continue
 		}
 
 		sm.logger.Debug("saved checkpoint",
 			"agent", a.Type(),
-			"issue", status.IssueNumber,
+			"issue", status.IssueID,
 			"state", status.State)
 	}
 
