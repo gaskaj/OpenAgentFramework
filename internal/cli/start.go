@@ -49,6 +49,19 @@ func runStart(cmd *cobra.Command, args []string) error {
 	structuredLogger := observability.NewStructuredLogger(cfg.Logging)
 	metrics := observability.NewMetrics(structuredLogger)
 
+	// Initialize log rotation and cleanup managers
+	var rotationManager *observability.LogRotationManager
+	var cleanupManager *observability.LogCleanupManager
+	
+	if cfg.Logging.FilePath != "" {
+		if cfg.Logging.Rotation.Enabled {
+			rotationManager = observability.NewLogRotationManager(cfg.Logging.Rotation)
+		}
+		if cfg.Logging.Cleanup.Enabled {
+			cleanupManager = observability.NewLogCleanupManager(cfg.Logging.Cleanup)
+		}
+	}
+
 	// Initialize error handling manager
 	errorManager := errors.NewManager(&cfg.ErrorHandling, logger).
 		WithObservability(structuredLogger, metrics)
@@ -108,6 +121,18 @@ func runStart(cmd *cobra.Command, args []string) error {
 
 	// Run orchestrator with graceful shutdown support.
 	orch := orchestrator.New(agents, logger).WithObservability(structuredLogger, metrics)
+	
+	// Add log management to orchestrator if configured
+	if rotationManager != nil {
+		orch = orch.WithLogRotation(rotationManager)
+	}
+	if cleanupManager != nil {
+		orch = orch.WithLogCleanup(cleanupManager)
+	}
+	if cfg.Logging.FilePath != "" {
+		orch = orch.WithLogFilePath(cfg.Logging.FilePath)
+	}
+	
 	shutdownManager := orchestrator.NewShutdownManager(agents, store, cfg, logger).
 		WithObservability(structuredLogger)
 

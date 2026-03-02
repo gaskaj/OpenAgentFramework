@@ -2,8 +2,10 @@ package observability
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gaskaj/DeveloperAndQAAgent/internal/config"
@@ -66,17 +68,30 @@ func NewStructuredLogger(cfg config.LoggingConfig) *StructuredLogger {
 	}
 
 	var handler slog.Handler
+	var writer io.Writer = os.Stderr
+
+	// Setup file-based logging if file path is specified
+	if cfg.FilePath != "" {
+		// Create log directory if it doesn't exist
+		logDir := filepath.Dir(cfg.FilePath)
+		if err := os.MkdirAll(logDir, 0755); err == nil {
+			if file, err := os.OpenFile(cfg.FilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644); err == nil {
+				writer = file
+			}
+		}
+		// If file creation fails, fall back to stderr
+	}
 
 	// Choose handler based on format configuration
 	switch cfg.StructuredLogging.Format {
 	case "structured_text":
-		handler = slog.NewTextHandler(os.Stderr, opts)
+		handler = slog.NewTextHandler(writer, opts)
 	case "development":
 		// Use text handler with pretty printing for development
-		handler = slog.NewTextHandler(os.Stderr, opts)
+		handler = slog.NewTextHandler(writer, opts)
 	default:
 		// Default to JSON for structured logging
-		handler = slog.NewJSONHandler(os.Stderr, opts)
+		handler = slog.NewJSONHandler(writer, opts)
 	}
 
 	logger := slog.New(handler)
