@@ -299,7 +299,26 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 	ws.UpdatedAt = time.Now()
 	_ = d.Deps.Store.Save(ctx, ws)
 
-	// Step 7: Update labels and complete
+	// Step 7: Validate PR checks
+	ctx = observability.WithWorkflowStage(ctx, observability.WorkflowStage("validate"))
+	d.updateStatus(state.StateValidation, issueNum, "validating PR checks")
+	
+	// Log workflow transition
+	if d.Deps.StructuredLogger != nil {
+		d.Deps.StructuredLogger.LogWorkflowTransition(ctx, issueNum, "pr", "validate", "monitoring_pr_checks")
+	}
+	
+	ws.State = state.StateValidation
+	ws.UpdatedAt = time.Now()
+	_ = d.Deps.Store.Save(ctx, ws)
+
+	validationErr := d.validatePRChecks(ctx, ws, repo, issueContext, plan)
+	if validationErr != nil {
+		d.failIssue(ctx, ws, fmt.Errorf("PR validation failed: %w", validationErr))
+		return validationErr
+	}
+
+	// Step 8: Update labels and complete
 	d.updateStatus(state.StateReview, issueNum, "awaiting review")
 	_ = d.Deps.GitHub.RemoveLabel(ctx, issueNum, "agent:in-progress")
 	_ = d.Deps.GitHub.AddLabels(ctx, issueNum, []string{"agent:in-review"})
@@ -316,6 +335,118 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 
 	d.updateStatus(state.StateIdle, 0, "waiting for issues")
 
+	return nil
+}
+
+// validatePRChecks monitors and validates PR checks, fixing failures as needed
+func (d *DeveloperAgent) validatePRChecks(ctx context.Context, ws *state.AgentWorkState, repo *gitops.Repo, issueContext, plan string) error {
+	prNumber := ws.PRNumber
+	issueNum := ws.IssueNumber
+	
+	d.logger().Info("starting PR validation", "pr", prNumber, "issue", issueNum)
+	_ = d.Deps.GitHub.CreateComment(ctx, issueNum, "🤖 Monitoring PR checks and will fix any failures...")
+
+	// Default validation options
+	opts := ghub.DefaultPRValidationOptions()
+	maxRetries := opts.MaxRetries
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		d.logger().Info("validating PR checks", "pr", prNumber, "attempt", attempt)
+		
+		result, err := d.Deps.GitHub.ValidatePR(ctx, prNumber, opts)
+		if err != nil {
+			return fmt.Errorf("validating PR %d (attempt %d): %w", prNumber, attempt, err)
+		}
+
+		// Success! All checks are passing
+		if result.AllChecksPassing && result.Status == ghub.PRCheckStatusSuccess {
+			d.logger().Info("PR validation successful", "pr", prNumber, "total_checks", result.TotalChecks)
+			_ = d.Deps.GitHub.CreateComment(ctx, issueNum, 
+				fmt.Sprintf("✅ All PR checks are passing! (%d checks completed successfully)", result.TotalChecks))
+			return nil
+		}
+
+		// Checks failed, try to fix them
+		if result.Status == ghub.PRCheckStatusFailed {
+			d.logger().Warn("PR checks failed", "pr", prNumber, "failed_checks", len(result.FailedChecks))
+			
+			failureAnalysis := result.AnalyzeFailures()
+			
+			// Post failure analysis as comment
+			failureComment := fmt.Sprintf("❌ **PR checks failed (attempt %d/%d)**\n\n%s\n\n🔧 Attempting to fix these issues...", 
+				attempt, maxRetries, failureAnalysis)
+			_ = d.Deps.GitHub.CreateComment(ctx, issueNum, failureComment)
+
+			// If this is the last attempt, don't try to fix
+			if attempt >= maxRetries {
+				return fmt.Errorf("PR checks failed after %d attempts: %s", maxRetries, failureAnalysis)
+			}
+
+			// Generate fix prompt and attempt to fix the failures
+			fixErr := d.fixPRFailures(ctx, repo, result, issueContext, plan)
+			if fixErr != nil {
+				d.logger().Error("failed to fix PR failures", "pr", prNumber, "attempt", attempt, "error", fixErr)
+				_ = d.Deps.GitHub.CreateComment(ctx, issueNum, 
+					fmt.Sprintf("⚠️ Failed to automatically fix PR issues (attempt %d): %v", attempt, fixErr))
+				
+				// Continue to next attempt
+				continue
+			}
+
+			// Push the fixes and continue to next validation attempt
+			if err := repo.StageAll(); err != nil {
+				return fmt.Errorf("staging fixes: %w", err)
+			}
+
+			commitMsg := fmt.Sprintf("fix: address PR check failures (#%d)", issueNum)
+			if err := repo.Commit(commitMsg); err != nil {
+				return fmt.Errorf("committing fixes: %w", err)
+			}
+
+			if err := repo.Push(); err != nil {
+				return fmt.Errorf("pushing fixes: %w", err)
+			}
+
+			d.logger().Info("fixes pushed, waiting for new check run", "pr", prNumber, "attempt", attempt)
+			_ = d.Deps.GitHub.CreateComment(ctx, issueNum, 
+				fmt.Sprintf("🔄 Fixes pushed! Waiting for checks to run again... (attempt %d/%d)", attempt, maxRetries))
+
+			// Wait a bit for the new checks to start
+			time.Sleep(30 * time.Second)
+		}
+	}
+
+	return fmt.Errorf("PR validation failed after %d attempts", maxRetries)
+}
+
+// fixPRFailures attempts to fix the failed PR checks using Claude
+func (d *DeveloperAgent) fixPRFailures(ctx context.Context, repo *gitops.Repo, result *ghub.PRValidationResult, issueContext, originalPlan string) error {
+	fixPrompt := result.GenerateFixPrompt(issueContext, originalPlan)
+	
+	d.logger().Info("generating fixes for PR failures", "failed_checks", len(result.FailedChecks))
+	
+	executor := d.createToolExecutor(repo)
+	
+	// Use a shorter iteration limit for fixes to prevent getting stuck
+	maxIter := 10
+	if d.Deps.Config.Decomposition.Enabled {
+		maxIter = d.Deps.Config.Decomposition.MaxIterationBudget / 2
+	}
+	
+	conv := claude.NewConversation(
+		d.Deps.Claude,
+		SystemPrompt,
+		claude.DevTools(),
+		executor,
+		d.Deps.Logger,
+		maxIter,
+	)
+
+	_, err := conv.Send(ctx, fixPrompt)
+	if err != nil {
+		return fmt.Errorf("generating fixes: %w", err)
+	}
+	
 	return nil
 }
 

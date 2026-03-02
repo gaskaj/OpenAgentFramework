@@ -45,12 +45,13 @@ type MockComment struct {
 
 // MockPR represents a mock GitHub pull request
 type MockPR struct {
-	Number int
-	Title  string
-	Body   string
-	Head   string
-	Base   string
-	State  string
+	Number  int
+	Title   string
+	Body    string
+	Head    string
+	Base    string
+	State   string
+	HeadSHA string
 }
 
 func (mc *MockComment) Contains(substring string) bool {
@@ -466,11 +467,87 @@ func (m *MockGitHubClient) CreatePR(ctx context.Context, options ghub.PROptions)
 		Body:   &body,
 		Head: &github.PullRequestBranch{
 			Ref: &head,
+			SHA: github.Ptr("mock-sha-" + fmt.Sprintf("%d", number)),
 		},
 		Base: &github.PullRequestBranch{
 			Ref: &base,
 		},
 		State: &state,
+	}, nil
+}
+
+func (m *MockGitHubClient) GetPR(ctx context.Context, number int) (*github.PullRequest, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.simulatedError != nil {
+		return nil, m.simulatedError
+	}
+
+	for _, pr := range m.prs {
+		if pr.Number == number {
+			num := pr.Number
+			title := pr.Title
+			body := pr.Body
+			head := pr.Head
+			base := pr.Base
+			state := pr.State
+			headSHA := pr.HeadSHA
+			if headSHA == "" {
+				headSHA = "mock-sha-" + fmt.Sprintf("%d", number)
+			}
+
+			return &github.PullRequest{
+				Number: &num,
+				Title:  &title,
+				Body:   &body,
+				Head: &github.PullRequestBranch{
+					Ref: &head,
+					SHA: &headSHA,
+				},
+				Base: &github.PullRequestBranch{
+					Ref: &base,
+				},
+				State: &state,
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("PR %d not found", number)
+}
+
+func (m *MockGitHubClient) ValidatePR(ctx context.Context, prNumber int, opts ghub.PRValidationOptions) (*ghub.PRValidationResult, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.simulatedError != nil {
+		return nil, m.simulatedError
+	}
+
+	// Mock successful validation by default
+	return &ghub.PRValidationResult{
+		Status:           ghub.PRCheckStatusSuccess,
+		AllChecksPassing: true,
+		FailedChecks:     []ghub.CheckFailure{},
+		PendingChecks:    []string{},
+		TotalChecks:      3,
+	}, nil
+}
+
+func (m *MockGitHubClient) GetPRCheckStatus(ctx context.Context, prNumber int) (*ghub.PRValidationResult, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.simulatedError != nil {
+		return nil, m.simulatedError
+	}
+
+	return &ghub.PRValidationResult{
+		Status:           ghub.PRCheckStatusSuccess,
+		AllChecksPassing: true,
+		FailedChecks:     []ghub.CheckFailure{},
+		PendingChecks:    []string{},
+		TotalChecks:      3,
 	}, nil
 }
 

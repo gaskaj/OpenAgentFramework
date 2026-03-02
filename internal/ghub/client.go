@@ -23,6 +23,9 @@ type Client interface {
 	// Pull Requests
 	CreatePR(ctx context.Context, opts PROptions) (*github.PullRequest, error)
 	ListPRs(ctx context.Context, state string) ([]*github.PullRequest, error)
+	GetPR(ctx context.Context, number int) (*github.PullRequest, error)
+	ValidatePR(ctx context.Context, prNumber int, opts PRValidationOptions) (*PRValidationResult, error)
+	GetPRCheckStatus(ctx context.Context, prNumber int) (*PRValidationResult, error)
 
 	// Issues (create)
 	CreateIssue(ctx context.Context, title, body string, labels []string) (*github.Issue, error)

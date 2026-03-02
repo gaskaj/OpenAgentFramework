@@ -328,6 +328,28 @@ func (m *trackingMockGitHub) ListComments(_ context.Context, _ int) ([]*github.I
 	return nil, nil
 }
 
+func (m *trackingMockGitHub) GetPR(_ context.Context, _ int) (*github.PullRequest, error) {
+	return &github.PullRequest{Number: github.Ptr(999)}, nil
+}
+
+func (m *trackingMockGitHub) ValidatePR(_ context.Context, _ int, _ ghub.PRValidationOptions) (*ghub.PRValidationResult, error) {
+	// Mock successful validation
+	return &ghub.PRValidationResult{
+		Status:           ghub.PRCheckStatusSuccess,
+		AllChecksPassing: true,
+		FailedChecks:     []ghub.CheckFailure{},
+		PendingChecks:    []string{},
+		TotalChecks:      2,
+	}, nil
+}
+
+func (m *trackingMockGitHub) GetPRCheckStatus(_ context.Context, _ int) (*ghub.PRValidationResult, error) {
+	return &ghub.PRValidationResult{
+		Status:           ghub.PRCheckStatusSuccess,
+		AllChecksPassing: true,
+	}, nil
+}
+
 // --- Integration helpers ---
 
 func newTestAgent(t *testing.T, gh ghub.Client, decompEnabled bool) *DeveloperAgent {
