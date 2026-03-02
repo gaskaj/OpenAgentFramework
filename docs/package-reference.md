@@ -55,12 +55,13 @@ GitHub API integration.
 
 | File | Key Types / Functions |
 |------|----------------------|
-| `client.go` | `Client` interface, `GitHubClient` struct, `NewClient()`, `PROptions`, `WithErrorHandling()` |
+| `client.go` | `Client` interface (incl. `GetPR`, `ValidatePR`, `GetPRCheckStatus`), `GitHubClient` struct, `NewClient()`, `PROptions`, `WithErrorHandling()` |
 | `issues.go` | `ListIssues()`, `GetIssue()`, `CreateIssue()`, `AssignIssue()`, `AssignSelfIfNoAssignees()`, `AddLabels()`, `RemoveLabel()` |
-| `pulls.go` | `CreatePR()`, `ListPRs()` |
+| `pulls.go` | `CreatePR()`, `ListPRs()`, `GetPR()` |
 | `branches.go` | `CreateBranch()` |
 | `comments.go` | `CreateComment()`, `ListComments()` |
 | `poller.go` | `Poller` struct, `NewPoller()`, `Run()`, `EventHandler` type, `IdleHandler` field |
+| `pr_validation.go` | `PRValidationResult`, `PRCheckStatus` (enum: `pending`, `running`, `completed`, `failed`, `success`), `CheckFailure`, `CheckAnnotation`, `PRValidationOptions`, `DefaultPRValidationOptions()`, `ValidatePR()`, `GetPRCheckStatus()`, `AnalyzeFailures()`, `GenerateFixPrompt()` |
 
 ## internal/gitops
 
@@ -88,7 +89,7 @@ Persistent agent work state.
 |------|----------------------|
 | `store.go` | `Store` interface (`Save`, `Load`, `Delete`, `List`) |
 | `filestore.go` | `FileStore` implementation — JSON files in `.agentctl/state/` |
-| `models.go` | `WorkflowState` enum (12 states), `AgentWorkState` struct |
+| `models.go` | `WorkflowState` enum (13 states incl. `StateValidation`), `AgentWorkState` struct |
 
 ## internal/creativity
 
@@ -120,7 +121,7 @@ Structured logging, correlation IDs, and metrics.
 
 | File | Key Types / Functions |
 |------|----------------------|
-| `correlation.go` | `CorrelationContext`, `HandoffInfo`, `StageEntry`, `WorkflowStage` constants (12 stages incl. `Decompose`, `Handoff`, `Idle`, `Error`), `EnsureCorrelationContext()`, `EnsureCorrelationID()`, `WithCorrelationID()`, `GetCorrelationID()`, `WithCorrelationContext()`, `GetCorrelationContext()`, `WithWorkflowStage()`, `WithHandoff()`, `WithMetadata()`, `GetWorkflowDuration()`, `GetStageDuration()`, `GetHandoffCount()`, `IsCurrentStage()` |
+| `correlation.go` | `CorrelationContext` (thread-safe via `sync.RWMutex`), `HandoffInfo`, `StageEntry`, `WorkflowStage` constants (12 stages incl. `Decompose`, `Handoff`, `Idle`, `Error`), `EnsureCorrelationContext()`, `EnsureCorrelationID()`, `WithCorrelationID()`, `GetCorrelationID()`, `WithCorrelationContext()`, `GetCorrelationContext()`, `WithWorkflowStage()`, `WithHandoff()`, `WithMetadata()`, `GetWorkflowDuration()`, `GetStageDuration()`, `GetHandoffCount()`, `IsCurrentStage()`, `GetAgentType()`, `GetCurrentWorkflowStage()`, `GetMetadataCopy()`, `GetStageEntriesCopy()`, `GetHandoffChainCopy()` |
 | `logger.go` | `StructuredLogger`, `NewStructuredLogger()`, `LogAgentStart()`, `LogAgentStop()`, `LogWorkflowTransition()`, `LogAgentHandoff()`, `LogDecisionPoint()`, `LogToolUsage()`, `LogLLMCall()`, `LogPerformanceMetric()`, `LogRetryAttempt()`, `LogRetrySuccess()`, `LogRetryExhausted()`, `LogRetryNonRetryable()`, `LogRetryDelay()`, `LogCircuitBreakerStateChange()`, `LogCircuitBreakerRejection()` |
 | `metrics.go` | `Metrics`, `NewMetrics()`, `Timer` (`Stop()`, `StopWithContext()`), `Histogram`, `Inc()`, `Add()`, `Set()`, `Observe()`, `RecordAgentOperation()`, `RecordLLMCall()`, `RecordWorkflowTransition()`, `GetCounters()`, `GetGauges()`, `GetHistogramSummary()` |
 
@@ -133,3 +134,16 @@ Cobra CLI commands.
 | `root.go` | Root command setup, `Execute()`, `--config` flag |
 | `start.go` | `agentctl start` — loads config, initializes observability → error manager → clients → dependencies → agents → orchestrator; signal handling (`SIGINT`, `SIGTERM`) for graceful shutdown |
 | `status.go` | `agentctl status` — displays agent status reports as JSON; human-readable state descriptions for `creative_thinking` and `decompose` states |
+
+## internal/integration
+
+Integration test suite. See [integration-testing.md](integration-testing.md) for full documentation.
+
+| File | Key Types / Functions |
+|------|----------------------|
+| `test_helpers.go` | `TestEnvironment` struct, `NewTestEnvironment()`, `CreateDependencies()`, `CreateDeveloperAgent()`, `CreateOrchestrator()`, `RunWithTimeout()`, `SimulateGitHubIssue()`, assertion helpers |
+| `mock_services.go` | `MockGitHubClient` (thread-safe `ghub.Client` mock), `MockClaudeServer` (HTTP mock for `/v1/messages`), `MockStore` (thread-safe `state.Store` mock), `EnqueueResponse()`, error injection |
+| `agent_communication_test.go` | Agent communication protocol, concurrent processing, timeout/retry, state consistency |
+| `workflow_handoff_test.go` | Agent handoff workflows, context preservation, error handling during transitions, handoff performance |
+| `shared_state_test.go` | Concurrent state access, resource contention, race detection, state consistency under failure |
+| `simple_agent_test.go` | Smoke tests for agent lifecycle, mock contracts, error simulation |

@@ -212,3 +212,5 @@ The `configs/` directory contains:
 ## State Persistence
 
 The `FileStore` (state backend `file`) stores agent state as JSON files in the configured state directory (default `.agentctl/state/`). Files are named `{agentType}.json`. `Load()` returns `nil` (not an error) if the file doesn't exist, allowing fresh starts.
+
+The `WorkflowState` enum has 13 states (see `internal/state/models.go`): `idle`, `claim`, `workspace`, `analyze`, `decompose`, `implement`, `commit`, `pr`, `validation`, `review`, `complete`, `failed`, `creative_thinking`. The `validation` state was added in PR #96 for PR check monitoring and auto-fix. PR validation uses hardcoded defaults via `DefaultPRValidationOptions()` — no YAML config entries are needed.

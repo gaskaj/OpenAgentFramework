@@ -22,6 +22,9 @@ type Client interface {
     // Pull Requests
     CreatePR(ctx context.Context, opts PROptions) (*github.PullRequest, error)
     ListPRs(ctx context.Context, state string) ([]*github.PullRequest, error)
+    GetPR(ctx context.Context, number int) (*github.PullRequest, error)
+    ValidatePR(ctx context.Context, prNumber int, opts PRValidationOptions) (*PRValidationResult, error)
+    GetPRCheckStatus(ctx context.Context, prNumber int) (*PRValidationResult, error)
 
     // Issues (create)
     CreateIssue(ctx context.Context, title, body string, labels []string) (*github.Issue, error)
@@ -118,6 +121,10 @@ The agent posts structured comments at key workflow points:
 | Decomposition | Subtask breakdown with issue links |
 | Subtask progress | "Processing subtask N/M: #X" |
 | Completion | Subtask summary or PR link |
+| Validation success | "All PR checks are passing! (N checks completed successfully)" |
+| Validation failure | Failure analysis markdown with check details |
+| Fix attempt | "Attempting to fix..." with attempt number |
+| Fixes pushed | "Fixes pushed! Waiting for checks to run again..." |
 | Failure | "Developer agent failed: \<error\>" |
 
 ## Branch Naming
@@ -143,6 +150,50 @@ type PROptions struct {
     Base  string
 }
 ```
+
+## PR Validation
+
+**Location**: `internal/ghub/pr_validation.go`
+
+After creating a PR, the agent validates that CI checks pass. This uses both the Check Runs API and legacy Commit Status API.
+
+### PRValidationOptions Defaults
+
+Returned by `DefaultPRValidationOptions()`:
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `MaxWaitTime` | 30m | Maximum time to wait for checks to complete |
+| `PollInterval` | 30s | Initial polling interval |
+| `MaxRetries` | 3 | Maximum fix attempts before giving up |
+| `BackoffFactor` | 1.5 | Exponential backoff multiplier for polling |
+| `MaxPollTime` | 5m | Cap on polling interval after backoff |
+
+### Validation Types
+
+| Type | Fields | Description |
+|------|--------|-------------|
+| `PRCheckStatus` | string enum | `pending`, `running`, `completed`, `failed`, `success` |
+| `PRValidationResult` | `Status`, `AllChecksPassing`, `FailedChecks`, `PendingChecks`, `TotalChecks` | Aggregated check result |
+| `CheckFailure` | `Name`, `Conclusion`, `Summary`, `DetailsURL`, `Annotations` | Individual failed check |
+| `CheckAnnotation` | `Filename`, `Line`, `Column`, `Message`, `Level` | Specific failure location |
+
+### Helper Methods
+
+| Method | Description |
+|--------|-------------|
+| `PRValidationResult.AnalyzeFailures()` | Generates human-readable markdown analysis of all check failures |
+| `PRValidationResult.GenerateFixPrompt(issueContext, originalPlan)` | Creates a Claude prompt containing failure analysis, original context, and fix instructions |
+
+### Validation Comment Protocol
+
+| Event | Comment |
+|-------|---------|
+| Monitoring start | Status update that checks are being monitored |
+| Check success | "All PR checks are passing! (N checks completed successfully)" |
+| Check failure | Failure analysis with details per check |
+| Fix attempt | "Attempting to fix..." with attempt count |
+| Fixes pushed | "Fixes pushed! Waiting for checks to run again..." |
 
 ## Authentication
 

@@ -14,12 +14,12 @@ idle ──► claim ──► workspace ──► analyze ──┤
  │                              │         │          │
  │                              ▼         │     ┌────┤
  │                     process children   │     │    ▼
- │                              │         │     │  commit ──► PR ──► review ──► complete
- │                              ▼         │     │
- │                            idle        │     ▼
- │                                        │  decompose (reactive)
- │                                        │     │
- ▼                                        │     ▼
+ │                              │         │     │  commit ──► PR ──► validation ──► review ──► complete
+ │                              ▼         │     │                       │
+ │                            idle        │     ▼                      │ (fix attempt)
+ │                                        │  decompose (reactive)      │
+ │                                        │     │                      ▼
+ ▼                                        │     ▼              implement ──► commit ──► push
 creative_thinking ────────────────────────►│  process children ──► idle
                                           │
                                           └──► failed
@@ -27,7 +27,7 @@ creative_thinking ────────────────────�
 
 **States** (defined in `internal/state/models.go`):
 
-`idle` · `claim` · `workspace` · `analyze` · `decompose` · `implement` · `commit` · `pr` · `review` · `complete` · `failed` · `creative_thinking`
+`idle` · `claim` · `workspace` · `analyze` · `decompose` · `implement` · `commit` · `pr` · `validation` · `review` · `complete` · `failed` · `creative_thinking`
 
 ## processIssue() Walkthrough
 
@@ -105,7 +105,28 @@ Creates a pull request with:
 - **Head**: `agent/issue-<N>`
 - **Base**: `main`
 
-### Step 7: Review
+### Step 7: PR Validation
+
+**Location**: `internal/developer/workflow.go` — `validatePRChecks()`
+
+After the PR is created, the agent monitors CI checks and attempts automatic fixes if they fail.
+
+1. **Check monitoring**: Polls the PR using `ValidatePR()` with exponential backoff (30s initial interval, 1.5x backoff, 5m cap, 30m max wait)
+2. **Status detection**: Combines both modern Check Runs API and legacy Commit Status API via `GetPRCheckStatus()`
+3. **On success**: Posts a completion comment and proceeds to review
+4. **On failure**: Analyzes failures using `AnalyzeFailures()` and `GenerateFixPrompt()`, then enters a fix loop:
+   - Claude receives the failure analysis plus the original issue context and plan
+   - Uses the same 6 tools (`read_file`, `edit_file`, etc.) to apply fixes
+   - Fix iteration budget: half of `decomposition.max_iteration_budget`
+   - Commits fixes (`fix: address PR check failures...`), pushes, waits 30s for new checks
+   - Up to 3 fix attempts (default `PRValidationOptions.MaxRetries`)
+5. **On exhaustion**: Posts failure analysis comment and marks the issue as failed
+
+GitHub comments are posted at each stage: monitoring start, check success, check failure with analysis, fix attempt, and fix push.
+
+See [github-integration.md](github-integration.md) for `PRValidationOptions` defaults and validation types.
+
+### Step 8: Review
 
 - Removes `agent:in-progress` label
 - Adds `agent:in-review` label
