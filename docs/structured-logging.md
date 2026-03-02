@@ -26,6 +26,11 @@ The `observability` package provides three core components:
 | `WithWorkflowStage(ctx, stage)` | Set the current workflow stage |
 | `WithHandoff(ctx, from, to, trigger, payloadSize)` | Record an agent handoff |
 | `WithMetadata(ctx, key, value)` | Add metadata to correlation context |
+| `GetAgentType()` | Thread-safe read of current agent type |
+| `GetCurrentWorkflowStage()` | Thread-safe read of current workflow stage |
+| `GetMetadataCopy()` | Thread-safe deep copy of metadata map |
+| `GetStageEntriesCopy()` | Thread-safe copy of stage entries slice |
+| `GetHandoffChainCopy()` | Thread-safe copy of handoff chain slice |
 
 ## Key Features
 
@@ -35,6 +40,7 @@ The system now tracks enriched correlation context throughout the entire workflo
 
 ```go
 type CorrelationContext struct {
+    mu            sync.RWMutex          `json:"-"`
     CorrelationID string                `json:"correlation_id"`
     CreatedAt     time.Time             `json:"created_at"`
     AgentType     string                `json:"agent_type"`
@@ -45,6 +51,18 @@ type CorrelationContext struct {
     StageEntries  []StageEntry         `json:"stage_entries"`
 }
 ```
+
+### Thread Safety
+
+`CorrelationContext` is protected by `sync.RWMutex` for safe concurrent access. Writer methods (`WithWorkflowStage`, `WithHandoff`, `WithMetadata`) acquire the write lock. Reader methods return defensive copies of slices and maps to prevent callers from introducing race conditions:
+
+| Accessor | Returns |
+|----------|---------|
+| `GetAgentType()` | Current agent type string |
+| `GetCurrentWorkflowStage()` | Current `WorkflowStage` value |
+| `GetMetadataCopy()` | Deep copy of metadata map |
+| `GetStageEntriesCopy()` | Copy of stage entries slice |
+| `GetHandoffChainCopy()` | Copy of handoff chain slice |
 
 ### 2. Workflow Stage Tracking
 

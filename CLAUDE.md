@@ -27,6 +27,7 @@ internal/
   config/                     Config loading (Viper), validation, defaults
   state/                      WorkflowState enum, AgentWorkState, file-based Store
   creativity/                 Idle-mode suggestion engine
+  integration/                Integration tests: agent communication, handoffs, shared state
   errors/                     Retry with backoff, circuit breakers, error classification
   observability/              Structured logger, correlation IDs, metrics
   cli/                        Cobra commands (start, status)
@@ -38,7 +39,7 @@ docs/                         Detailed documentation (see links below)
 
 The Orchestrator runs agents concurrently. The Developer agent polls GitHub for `agent:ready` issues, claims them, clones the repo, asks Claude to analyze and implement, then commits and creates a PR. Complex issues are decomposed into subtask issues. Idle agents generate improvement suggestions via the creativity engine.
 
-**Workflow**: `idle → claim → workspace → analyze → [decompose] → implement → commit → PR → review → complete`
+**Workflow**: `idle → claim → workspace → analyze → [decompose] → implement → commit → PR → validation → review → complete`
 
 ## Key Patterns and Conventions
 
@@ -83,7 +84,7 @@ The developer agent gives Claude 6 tools (defined in `internal/claude/tools.go`)
 
 From `internal/state/models.go`:
 
-`idle` · `claim` · `workspace` · `analyze` · `decompose` · `implement` · `commit` · `pr` · `review` · `complete` · `failed` · `creative_thinking`
+`idle` · `claim` · `workspace` · `analyze` · `decompose` · `implement` · `commit` · `pr` · `validation` · `review` · `complete` · `failed` · `creative_thinking`
 
 ## Prompt Constants
 
@@ -116,6 +117,7 @@ Key sections: `github`, `claude`, `agents`, `state`, `logging`, `creativity`, `d
 - [docs/code-conventions.md](docs/code-conventions.md) — Error handling, naming, interfaces, logging, testing
 - [docs/package-reference.md](docs/package-reference.md) — Per-package API catalog
 - [docs/structured-logging.md](docs/structured-logging.md) — Observability, correlation IDs, metrics
+- [docs/integration-testing.md](docs/integration-testing.md) — Integration test suite, mock infrastructure, CI pipeline
 
 ## Documentation Instructions 
 
