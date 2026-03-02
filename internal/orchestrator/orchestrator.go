@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"log/slog"
+	"path/filepath"
 
 	"github.com/gaskaj/DeveloperAndQAAgent/internal/agent"
 	"github.com/gaskaj/DeveloperAndQAAgent/internal/observability"
@@ -17,6 +18,9 @@ type Orchestrator struct {
 	structuredLogger *observability.StructuredLogger
 	metrics          *observability.Metrics
 	cleanupScheduler *workspace.Scheduler
+	rotationManager  *observability.LogRotationManager
+	cleanupManager   *observability.LogCleanupManager
+	logFilePath      string
 }
 
 // New creates a new Orchestrator with the given agents.
@@ -37,6 +41,24 @@ func (o *Orchestrator) WithObservability(structuredLogger *observability.Structu
 // WithWorkspaceCleanup adds workspace cleanup scheduling to the orchestrator
 func (o *Orchestrator) WithWorkspaceCleanup(scheduler *workspace.Scheduler) *Orchestrator {
 	o.cleanupScheduler = scheduler
+	return o
+}
+
+// WithLogRotation adds log rotation management to the orchestrator
+func (o *Orchestrator) WithLogRotation(manager *observability.LogRotationManager) *Orchestrator {
+	o.rotationManager = manager
+	return o
+}
+
+// WithLogCleanup adds log cleanup management to the orchestrator
+func (o *Orchestrator) WithLogCleanup(manager *observability.LogCleanupManager) *Orchestrator {
+	o.cleanupManager = manager
+	return o
+}
+
+// WithLogFilePath sets the log file path for rotation and cleanup
+func (o *Orchestrator) WithLogFilePath(logFilePath string) *Orchestrator {
+	o.logFilePath = logFilePath
 	return o
 }
 
@@ -61,6 +83,46 @@ func (o *Orchestrator) Run(ctx context.Context) error {
 			o.logger.Info("stopping workspace cleanup scheduler")
 			o.cleanupScheduler.Stop()
 		}()
+	}
+
+	// Start log rotation manager if configured
+	if o.rotationManager != nil {
+		logFilePath := o.logFilePath
+		if logFilePath == "" {
+			logFilePath = "./logs/agent.log" // Default path
+		}
+		
+		o.logger.Info("starting log rotation manager", "log_file", logFilePath)
+		if err := o.rotationManager.Start(ctx, logFilePath); err != nil {
+			o.logger.Error("failed to start log rotation manager", "error", err)
+		} else {
+			defer func() {
+				o.logger.Info("stopping log rotation manager")
+				if err := o.rotationManager.Stop(); err != nil {
+					o.logger.Error("error stopping log rotation manager", "error", err)
+				}
+			}()
+		}
+	}
+
+	// Start log cleanup manager if configured
+	if o.cleanupManager != nil {
+		logDir := "./logs" // Default directory
+		if o.logFilePath != "" {
+			logDir = filepath.Dir(o.logFilePath)
+		}
+		
+		o.logger.Info("starting log cleanup manager", "log_dir", logDir)
+		if err := o.cleanupManager.Start(ctx, logDir); err != nil {
+			o.logger.Error("failed to start log cleanup manager", "error", err)
+		} else {
+			defer func() {
+				o.logger.Info("stopping log cleanup manager")
+				if err := o.cleanupManager.Stop(); err != nil {
+					o.logger.Error("error stopping log cleanup manager", "error", err)
+				}
+			}()
+		}
 	}
 
 	for _, a := range o.agents {

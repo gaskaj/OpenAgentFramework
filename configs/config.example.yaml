@@ -80,6 +80,64 @@ logging:
   # warn: Important warnings only
   # error: Error conditions only
   level: "info"
+  
+  # Optional: Log to file instead of stdout/stderr
+  # If specified, enables file-based logging with rotation/cleanup
+  # Directory will be created if it doesn't exist
+  file_path: "./logs/agent.log"
+  
+  # Log rotation configuration (only applies when file_path is set)
+  rotation:
+    # Enable automatic log rotation based on size and age
+    enabled: true
+    
+    # Rotate log file when it exceeds this size (in MB)
+    # Recommended: 50-500MB depending on disk space and log volume
+    max_file_size_mb: 100
+    
+    # Maximum number of rotated log files to keep
+    # Older files beyond this limit are automatically deleted
+    # Recommended: 5-20 files
+    max_files: 10
+    
+    # Maximum age before rotating a log file
+    # Files older than this duration are rotated regardless of size
+    # Format: "24h", "7d", "720h" (30 days)
+    max_age: "720h"  # 30 days
+    
+    # Compress rotated log files using gzip to save disk space
+    # Recommended: true for production environments
+    compress_old: true
+    
+    # How frequently to check if rotation is needed
+    # More frequent checks = more responsive rotation, but higher CPU usage
+    # Recommended: 1h-6h
+    check_interval: "1h"
+  
+  # Log cleanup configuration (applies to log directory)  
+  cleanup:
+    # Enable automatic cleanup of old log files
+    enabled: true
+    
+    # Delete log files older than this many days
+    # Set to 0 to disable age-based cleanup
+    # Recommended: 30-180 days depending on compliance requirements
+    retention_days: 90
+    
+    # Cleanup old logs when free disk space falls below this threshold (MB)
+    # Set to 0 to disable disk-space-based cleanup
+    # Recommended: 1GB-10GB depending on system
+    min_free_disk_mb: 1024  # 1GB
+    
+    # How frequently to run cleanup operations
+    # More frequent cleanup = better disk space management, but higher I/O
+    # Recommended: 6h-24h
+    cleanup_interval: "24h"
+    
+    # Compress log files before deleting them (creates .gz archives)
+    # Provides a grace period for recovering accidentally deleted logs
+    # Note: Archives are still deleted, this just adds compression step
+    archive_before_delete: true
 
 creativity:
   # Enable autonomous creativity mode when idle

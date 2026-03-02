@@ -39,10 +39,24 @@ state:
 logging:
   level: info                          # Log level: debug, info, warn, error.
   format: text                         # Log format: text or json.
+  file_path: ./logs/agent.log          # Log file location (optional).
   enable_correlation: true             # Enable correlation ID tracking.
   sampling:
     enabled: false                     # Enable log sampling.
     rate: 1.0                          # Sampling rate (0.0–1.0).
+  rotation:
+    enabled: true                      # Enable log rotation.
+    max_file_size_mb: 100              # Rotate when file exceeds size (MB).
+    max_files: 10                      # Keep N rotated files.
+    max_age: 720h                      # Delete files older than duration (30d).
+    compress_old: true                 # Gzip rotated files.
+    check_interval: 1h                 # Rotation check frequency.
+  cleanup:
+    enabled: true                      # Enable log cleanup.
+    retention_days: 90                 # Delete logs older than N days.
+    min_free_disk_mb: 1024             # Cleanup when disk space below threshold (MB).
+    cleanup_interval: 24h              # Cleanup check frequency.
+    archive_before_delete: true        # Compress before deletion.
   structured_logging:
     enabled: true                      # Enable structured logging.
     format: json                       # Structured log format.

@@ -65,11 +65,14 @@ type StateConfig struct {
 type LoggingConfig struct {
 	Level              string                    `mapstructure:"level"`
 	Format             string                    `mapstructure:"format"`
+	FilePath           string                    `mapstructure:"file_path"`
 	EnableCorrelation  bool                      `mapstructure:"enable_correlation"`
 	Sampling           LoggingSamplingConfig     `mapstructure:"sampling"`
 	Components         map[string]string         `mapstructure:"components"`
 	StructuredLogging  StructuredLoggingConfig   `mapstructure:"structured_logging"`
 	MultiAgentObserve  MultiAgentObservability   `mapstructure:"multi_agent_observability"`
+	Rotation           LogRotationConfig         `mapstructure:"rotation"`
+	Cleanup            LogCleanupConfig          `mapstructure:"cleanup"`
 }
 
 // StructuredLoggingConfig holds structured logging configuration
@@ -146,6 +149,25 @@ type MultiAgentAlertingConfig struct {
 type LoggingSamplingConfig struct {
 	Enabled bool    `mapstructure:"enabled"`
 	Rate    float64 `mapstructure:"rate"`
+}
+
+// LogRotationConfig holds configuration for log rotation
+type LogRotationConfig struct {
+	Enabled       bool          `mapstructure:"enabled"`
+	MaxFileSize   int64         `mapstructure:"max_file_size_mb"` // MB
+	MaxFiles      int           `mapstructure:"max_files"`
+	MaxAge        time.Duration `mapstructure:"max_age"`
+	CompressOld   bool          `mapstructure:"compress_old"`
+	CheckInterval time.Duration `mapstructure:"check_interval"`
+}
+
+// LogCleanupConfig holds configuration for log cleanup and disk space management
+type LogCleanupConfig struct {
+	Enabled             bool          `mapstructure:"enabled"`
+	RetentionDays       int           `mapstructure:"retention_days"`
+	MinFreeDiskMB       int64         `mapstructure:"min_free_disk_mb"` // MB
+	CleanupInterval     time.Duration `mapstructure:"cleanup_interval"`
+	ArchiveBeforeDelete bool          `mapstructure:"archive_before_delete"`
 }
 
 // MetricsConfig holds metrics collection configuration.
