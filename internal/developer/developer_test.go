@@ -44,6 +44,25 @@ func (m *mockGitHubClient) CreateComment(_ context.Context, _ int, _ string) err
 func (m *mockGitHubClient) ListComments(_ context.Context, _ int) ([]*github.IssueComment, error) {
 	return nil, nil
 }
+func (m *mockGitHubClient) GetPR(_ context.Context, _ int) (*github.PullRequest, error) {
+	return nil, nil
+}
+func (m *mockGitHubClient) ValidatePR(_ context.Context, _ int, _ ghub.PRValidationOptions) (*ghub.PRValidationResult, error) {
+	// Mock successful validation
+	return &ghub.PRValidationResult{
+		Status:           ghub.PRCheckStatusSuccess,
+		AllChecksPassing: true,
+		FailedChecks:     []ghub.CheckFailure{},
+		PendingChecks:    []string{},
+		TotalChecks:      2,
+	}, nil
+}
+func (m *mockGitHubClient) GetPRCheckStatus(_ context.Context, _ int) (*ghub.PRValidationResult, error) {
+	return &ghub.PRValidationResult{
+		Status:           ghub.PRCheckStatusSuccess,
+		AllChecksPassing: true,
+	}, nil
+}
 
 func newTestDeps(t *testing.T) agent.Dependencies {
 	t.Helper()

@@ -34,3 +34,12 @@ func (c *GitHubClient) ListPRs(ctx context.Context, state string) ([]*github.Pul
 	}
 	return prs, nil
 }
+
+// GetPR retrieves a specific pull request by number.
+func (c *GitHubClient) GetPR(ctx context.Context, number int) (*github.PullRequest, error) {
+	pr, _, err := c.client.PullRequests.Get(ctx, c.owner, c.repo, number)
+	if err != nil {
+		return nil, fmt.Errorf("getting pull request %d: %w", number, err)
+	}
+	return pr, nil
+}

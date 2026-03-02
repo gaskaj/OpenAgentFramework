@@ -6,18 +6,19 @@ import "time"
 type WorkflowState string
 
 const (
-	StateIdle      WorkflowState = "idle"
-	StateClaim     WorkflowState = "claim"
-	StateAnalyze   WorkflowState = "analyze"
-	StateWorkspace WorkflowState = "workspace"
-	StateImplement WorkflowState = "implement"
-	StateCommit    WorkflowState = "commit"
-	StatePR        WorkflowState = "pr"
-	StateReview    WorkflowState = "review"
-	StateComplete  WorkflowState = "complete"
-	StateFailed        WorkflowState = "failed"
+	StateIdle        WorkflowState = "idle"
+	StateClaim       WorkflowState = "claim"
+	StateAnalyze     WorkflowState = "analyze"
+	StateWorkspace   WorkflowState = "workspace"
+	StateImplement   WorkflowState = "implement"
+	StateCommit      WorkflowState = "commit"
+	StatePR          WorkflowState = "pr"
+	StateValidation  WorkflowState = "validation"
+	StateReview      WorkflowState = "review"
+	StateComplete    WorkflowState = "complete"
+	StateFailed      WorkflowState = "failed"
 	StateCreativeThink WorkflowState = "creative_thinking"
-	StateDecompose     WorkflowState = "decompose"
+	StateDecompose   WorkflowState = "decompose"
 )
 
 // AgentWorkState tracks the current work state of an agent.
