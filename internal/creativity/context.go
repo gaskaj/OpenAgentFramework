@@ -64,7 +64,7 @@ func buildPrompt(projectCtx *ProjectContext) string {
 
 	b.WriteString("## Instructions\n")
 	b.WriteString("Propose ONE specific, high-impact improvement for this project.\n")
-	b.WriteString("The project details can be understood on the project wiki https://github.com/gaskaj/DeveloperAndQAAgent/wiki.\n")
+	b.WriteString("The project details can be understood on the project ./README.md\n")
 	b.WriteString("Do NOT duplicate any existing issue or previously rejected idea.\n")
 	b.WriteString("Focus on: code quality, performance, security, testing, documentation, or developer experience.\n")
 	b.WriteString("Be concrete and actionable — include specific files, patterns, or areas to address.\n\n")

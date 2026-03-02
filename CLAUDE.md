@@ -116,3 +116,12 @@ Key sections: `github`, `claude`, `agents`, `state`, `logging`, `creativity`, `d
 - [docs/code-conventions.md](docs/code-conventions.md) — Error handling, naming, interfaces, logging, testing
 - [docs/package-reference.md](docs/package-reference.md) — Per-package API catalog
 - [docs/structured-logging.md](docs/structured-logging.md) — Observability, correlation IDs, metrics
+
+## Documentation Instructions 
+
+- All new features must be documented in the ./docs folder
+- Documentation is to give the LLM and a Human context what the code is doing
+- Documentation should be optimized for LLM and avoid duplication of content
+- Reference other documentation and/or code with file references
+- Avoid duplicating code in the instructions and reference the files the documentation is describing
+- Documentation MUST be added with the Issue and PR of the new feature
