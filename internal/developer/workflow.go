@@ -327,6 +327,16 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 		return err
 	}
 
+	hasChanges, err := repo.HasChanges()
+	if err != nil {
+		d.failIssue(ctx, ws, fmt.Errorf("checking for changes: %w", err))
+		return err
+	}
+	if !hasChanges {
+		d.failIssue(ctx, ws, fmt.Errorf("implementation produced no file changes"))
+		return fmt.Errorf("implementation produced no file changes")
+	}
+
 	commitMsg := fmt.Sprintf("feat: implement #%d - %s", issueNum, issueTitle)
 	if err := repo.Commit(commitMsg); err != nil {
 		d.failIssue(ctx, ws, fmt.Errorf("committing: %w", err))
@@ -573,6 +583,17 @@ func (d *DeveloperAgent) validatePRChecks(ctx context.Context, ws *state.AgentWo
 			// Push the fixes and continue to next validation attempt
 			if err := repo.StageAll(); err != nil {
 				return fmt.Errorf("staging fixes: %w", err)
+			}
+
+			hasChanges, chkErr := repo.HasChanges()
+			if chkErr != nil {
+				return fmt.Errorf("checking for fix changes: %w", chkErr)
+			}
+			if !hasChanges {
+				d.logger().Warn("fix attempt produced no file changes, skipping commit", "pr", prNumber, "attempt", attempt)
+				_ = d.Deps.GitHub.CreateComment(ctx, issueNum,
+					fmt.Sprintf("⚠️ Fix attempt %d produced no file changes, retrying...", attempt))
+				continue
 			}
 
 			commitMsg := fmt.Sprintf("fix: address PR check failures (#%d)", issueNum)

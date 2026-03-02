@@ -35,6 +35,15 @@ func (r *Repo) ReadFile(path string) (string, error) {
 	return string(data), nil
 }
 
+// HasChanges returns true if the working tree has staged or unstaged changes.
+func (r *Repo) HasChanges() (bool, error) {
+	status, err := r.worktree.Status()
+	if err != nil {
+		return false, fmt.Errorf("checking worktree status: %w", err)
+	}
+	return !status.IsClean(), nil
+}
+
 // StageAll stages all changes in the working directory.
 func (r *Repo) StageAll() error {
 	if err := r.worktree.AddWithOptions(&git.AddOptions{All: true}); err != nil {
