@@ -14,12 +14,12 @@ import (
 
 // MockGitHubClient implements ghub.Client interface for testing
 type MockGitHubClient struct {
-	mu               sync.RWMutex
-	issues           map[int]*MockIssue
-	comments         map[int][]*MockComment
-	prs              []*MockPR
-	simulatedError   error
-	assignees        map[int][]string
+	mu             sync.RWMutex
+	issues         map[int]*MockIssue
+	comments       map[int][]*MockComment
+	prs            []*MockPR
+	simulatedError error
+	assignees      map[int][]string
 }
 
 // MockIssue represents a mock GitHub issue
@@ -55,8 +55,8 @@ func (mc *MockComment) Contains(substring string) bool {
 // NewMockGitHubClient creates a new mock GitHub client
 func NewMockGitHubClient() *MockGitHubClient {
 	return &MockGitHubClient{
-		issues:   make(map[int]*MockIssue),
-		comments: make(map[int][]*MockComment),
+		issues:    make(map[int]*MockIssue),
+		comments:  make(map[int][]*MockComment),
 		assignees: make(map[int][]string),
 	}
 }
@@ -115,7 +115,7 @@ func (m *MockGitHubClient) ListIssues(ctx context.Context, labels []string) ([]*
 func (m *MockGitHubClient) ListIssuesByLabels(ctx context.Context, labels []string) ([]*github.Issue, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if m.simulatedError != nil {
 		return nil, m.simulatedError
 	}
@@ -137,30 +137,30 @@ func (m *MockGitHubClient) ListIssuesByLabels(ctx context.Context, labels []stri
 				break
 			}
 		}
-		
+
 		if hasAllLabels {
 			// Convert MockIssue to github.Issue
 			number := issue.Number
 			title := issue.Title
 			body := issue.Body
-			
+
 			var githubLabels []*github.Label
 			for _, labelName := range issue.Labels {
 				name := labelName
 				githubLabels = append(githubLabels, &github.Label{Name: &name})
 			}
-			
+
 			var githubAssignees []*github.User
 			for _, assignee := range issue.Assignees {
 				login := assignee
 				githubAssignees = append(githubAssignees, &github.User{Login: &login})
 			}
-			
+
 			state := issue.State
 			if state == "" {
 				state = "open"
 			}
-			
+
 			result = append(result, &github.Issue{
 				Number:    &number,
 				Title:     &title,
@@ -171,14 +171,14 @@ func (m *MockGitHubClient) ListIssuesByLabels(ctx context.Context, labels []stri
 			})
 		}
 	}
-	
+
 	return result, nil
 }
 
 func (m *MockGitHubClient) AddLabels(ctx context.Context, number int, labels []string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.simulatedError != nil {
 		return m.simulatedError
 	}
@@ -198,14 +198,14 @@ func (m *MockGitHubClient) AddLabels(ctx context.Context, number int, labels []s
 			}
 		}
 	}
-	
+
 	return nil
 }
 
 func (m *MockGitHubClient) RemoveLabel(ctx context.Context, number int, label string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.simulatedError != nil {
 		return m.simulatedError
 	}
@@ -220,14 +220,14 @@ func (m *MockGitHubClient) RemoveLabel(ctx context.Context, number int, label st
 		}
 		issue.Labels = newLabels
 	}
-	
+
 	return nil
 }
 
 func (m *MockGitHubClient) CreateComment(ctx context.Context, number int, body string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.simulatedError != nil {
 		return m.simulatedError
 	}
@@ -237,14 +237,14 @@ func (m *MockGitHubClient) CreateComment(ctx context.Context, number int, body s
 		CreatedAt: time.Now(),
 	}
 	m.comments[number] = append(m.comments[number], comment)
-	
+
 	return nil
 }
 
 func (m *MockGitHubClient) AssignSelfIfNoAssignees(ctx context.Context, number int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.simulatedError != nil {
 		return m.simulatedError
 	}
@@ -254,14 +254,14 @@ func (m *MockGitHubClient) AssignSelfIfNoAssignees(ctx context.Context, number i
 			issue.Assignees = []string{"test-agent"}
 		}
 	}
-	
+
 	return nil
 }
 
 func (m *MockGitHubClient) AssignIssue(ctx context.Context, number int, assignees []string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.simulatedError != nil {
 		return m.simulatedError
 	}
@@ -269,14 +269,14 @@ func (m *MockGitHubClient) AssignIssue(ctx context.Context, number int, assignee
 	if issue, ok := m.issues[number]; ok {
 		issue.Assignees = assignees
 	}
-	
+
 	return nil
 }
 
 func (m *MockGitHubClient) GetIssue(ctx context.Context, number int) (*github.Issue, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if m.simulatedError != nil {
 		return nil, m.simulatedError
 	}
@@ -290,19 +290,19 @@ func (m *MockGitHubClient) GetIssue(ctx context.Context, number int) (*github.Is
 		if state == "" {
 			state = "open"
 		}
-		
+
 		var githubLabels []*github.Label
 		for _, labelName := range issue.Labels {
 			name := labelName
 			githubLabels = append(githubLabels, &github.Label{Name: &name})
 		}
-		
+
 		var githubAssignees []*github.User
 		for _, assignee := range issue.Assignees {
 			login := assignee
 			githubAssignees = append(githubAssignees, &github.User{Login: &login})
 		}
-		
+
 		return &github.Issue{
 			Number:    &num,
 			Title:     &title,
@@ -312,14 +312,14 @@ func (m *MockGitHubClient) GetIssue(ctx context.Context, number int) (*github.Is
 			State:     &state,
 		}, nil
 	}
-	
+
 	return nil, fmt.Errorf("issue %d not found", number)
 }
 
 func (m *MockGitHubClient) CreateBranch(ctx context.Context, name string, fromRef string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.simulatedError != nil {
 		return m.simulatedError
 	}
@@ -331,7 +331,7 @@ func (m *MockGitHubClient) CreateBranch(ctx context.Context, name string, fromRe
 func (m *MockGitHubClient) ListPRs(ctx context.Context, state string) ([]*github.PullRequest, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if m.simulatedError != nil {
 		return nil, m.simulatedError
 	}
@@ -345,7 +345,7 @@ func (m *MockGitHubClient) ListPRs(ctx context.Context, state string) ([]*github
 			head := pr.Head
 			base := pr.Base
 			prState := pr.State
-			
+
 			result = append(result, &github.PullRequest{
 				Number: &number,
 				Title:  &title,
@@ -360,14 +360,14 @@ func (m *MockGitHubClient) ListPRs(ctx context.Context, state string) ([]*github
 			})
 		}
 	}
-	
+
 	return result, nil
 }
 
 func (m *MockGitHubClient) CreateIssue(ctx context.Context, title, body string, labels []string) (*github.Issue, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.simulatedError != nil {
 		return nil, m.simulatedError
 	}
@@ -381,19 +381,19 @@ func (m *MockGitHubClient) CreateIssue(ctx context.Context, title, body string, 
 		State:  "open",
 	}
 	m.issues[number] = issue
-	
+
 	// Convert to github.Issue
 	num := issue.Number
 	issueTitle := issue.Title
 	issueBody := issue.Body
 	state := issue.State
-	
+
 	var githubLabels []*github.Label
 	for _, labelName := range issue.Labels {
 		name := labelName
 		githubLabels = append(githubLabels, &github.Label{Name: &name})
 	}
-	
+
 	return &github.Issue{
 		Number: &num,
 		Title:  &issueTitle,
@@ -406,7 +406,7 @@ func (m *MockGitHubClient) CreateIssue(ctx context.Context, title, body string, 
 func (m *MockGitHubClient) ListComments(ctx context.Context, number int) ([]*github.IssueComment, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if m.simulatedError != nil {
 		return nil, m.simulatedError
 	}
@@ -417,21 +417,21 @@ func (m *MockGitHubClient) ListComments(ctx context.Context, number int) ([]*git
 		body := comment.Body
 		createdAt := comment.CreatedAt
 		id := int64(len(result) + 1)
-		
+
 		result = append(result, &github.IssueComment{
 			ID:        &id,
 			Body:      &body,
 			CreatedAt: &github.Timestamp{Time: createdAt},
 		})
 	}
-	
+
 	return result, nil
 }
 
 func (m *MockGitHubClient) CreatePR(ctx context.Context, options ghub.PROptions) (*github.PullRequest, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.simulatedError != nil {
 		return nil, m.simulatedError
 	}
@@ -446,7 +446,7 @@ func (m *MockGitHubClient) CreatePR(ctx context.Context, options ghub.PROptions)
 		State:  "open",
 	}
 	m.prs = append(m.prs, pr)
-	
+
 	// Convert to github.PullRequest
 	number := pr.Number
 	title := pr.Title
@@ -454,7 +454,7 @@ func (m *MockGitHubClient) CreatePR(ctx context.Context, options ghub.PROptions)
 	head := pr.Head
 	base := pr.Base
 	state := pr.State
-	
+
 	return &github.PullRequest{
 		Number: &number,
 		Title:  &title,
@@ -471,24 +471,24 @@ func (m *MockGitHubClient) CreatePR(ctx context.Context, options ghub.PROptions)
 
 // SimpleClaudeClient is a minimal mock that focuses on testing agent behavior
 type SimpleClaudeClient struct {
-	mu               sync.RWMutex
-	responses        map[string]string
-	simulatedError   error
-	callCount        int
-	maxIterations    int
+	mu             sync.RWMutex
+	responses      map[string]string
+	simulatedError error
+	callCount      int
+	maxIterations  int
 }
 
 func NewSimpleClaudeClient() *SimpleClaudeClient {
 	client := &SimpleClaudeClient{
-		responses: make(map[string]string),
+		responses:     make(map[string]string),
 		maxIterations: 10,
 	}
-	
+
 	// Set default responses
 	client.responses["analyze"] = "## Analysis Complete\n\nThis issue requires implementing a new feature.\n\n## Implementation Plan\n\n1. Create new file\n2. Add tests\n3. Update docs"
 	client.responses["too_complex"] = "COMPLEXITY_ASSESSMENT: TOO_COMPLEX\nThis issue requires decomposition."
 	client.responses["implement"] = "Implementation completed successfully."
-	
+
 	return client
 }
 
@@ -561,7 +561,7 @@ func (m *MockStore) ClearError() {
 func (m *MockStore) Save(ctx context.Context, agentState *state.AgentWorkState) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.simulatedError != nil {
 		return m.simulatedError
 	}
@@ -575,7 +575,7 @@ func (m *MockStore) Save(ctx context.Context, agentState *state.AgentWorkState) 
 func (m *MockStore) Load(ctx context.Context, agentType string) (*state.AgentWorkState, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if m.simulatedError != nil {
 		return nil, m.simulatedError
 	}
@@ -585,14 +585,14 @@ func (m *MockStore) Load(ctx context.Context, agentType string) (*state.AgentWor
 		stateCopy := *state
 		return &stateCopy, nil
 	}
-	
+
 	return nil, nil
 }
 
 func (m *MockStore) Delete(ctx context.Context, agentType string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.simulatedError != nil {
 		return m.simulatedError
 	}
@@ -604,7 +604,7 @@ func (m *MockStore) Delete(ctx context.Context, agentType string) error {
 func (m *MockStore) List(ctx context.Context) ([]*state.AgentWorkState, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if m.simulatedError != nil {
 		return nil, m.simulatedError
 	}
@@ -615,6 +615,6 @@ func (m *MockStore) List(ctx context.Context) ([]*state.AgentWorkState, error) {
 		stateCopy := *state
 		result = append(result, &stateCopy)
 	}
-	
+
 	return result, nil
 }

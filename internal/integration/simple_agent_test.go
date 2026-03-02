@@ -30,11 +30,11 @@ func TestBasicAgentLifecycle(t *testing.T) {
 	status := devAgent.Status()
 	assert.Equal(t, "developer", string(status.Type))
 	assert.Equal(t, "waiting for issues", status.Message)
-	
+
 	// Verify GitHub mock is working
 	labels := te.githubClient.GetIssueLabels(123)
 	assert.Contains(t, labels, "agent:ready")
-	
+
 	// Verify store mock is working
 	ctx := context.Background()
 	testState := &state.AgentWorkState{
@@ -44,10 +44,10 @@ func TestBasicAgentLifecycle(t *testing.T) {
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	
+
 	err = te.store.Save(ctx, testState)
 	require.NoError(t, err)
-	
+
 	loadedState, err := te.store.Load(ctx, "test-agent")
 	require.NoError(t, err)
 	require.NotNil(t, loadedState)
@@ -93,7 +93,7 @@ func TestGitHubMockOperations(t *testing.T) {
 	// Test AssignIssue
 	err = te.githubClient.AssignIssue(ctx, issueNumber, []string{"test-user"})
 	require.NoError(t, err)
-	
+
 	// Verify assignment via GetIssue
 	retrievedIssue, err := te.githubClient.GetIssue(ctx, issueNumber)
 	require.NoError(t, err)

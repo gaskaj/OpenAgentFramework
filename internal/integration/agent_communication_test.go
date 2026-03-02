@@ -71,7 +71,7 @@ func TestBasicAgentCommunication(t *testing.T) {
 
 			// Cancel context to stop orchestrator
 			cancel()
-			
+
 			// Wait for orchestrator to finish
 			select {
 			case err := <-done:
@@ -180,7 +180,7 @@ func TestConcurrentAgentCommunication(t *testing.T) {
 	issues := make([]*MockIssue, 5)
 	for i := 0; i < 5; i++ {
 		issueNum := 200 + i
-		issues[i] = te.SimulateGitHubIssue(issueNum, fmt.Sprintf("Concurrent issue %d", i), 
+		issues[i] = te.SimulateGitHubIssue(issueNum, fmt.Sprintf("Concurrent issue %d", i),
 			fmt.Sprintf("Test issue %d body", i), []string{"agent:ready"})
 	}
 
@@ -207,7 +207,7 @@ func TestConcurrentAgentCommunication(t *testing.T) {
 		for _, label := range labels {
 			labelMap[label] = true
 		}
-		
+
 		// Check if issue was claimed (minimum processing)
 		if labelMap["agent:claimed"] {
 			processedCount++
@@ -313,7 +313,7 @@ func TestAgentStateConsistency(t *testing.T) {
 	go func() {
 		ticker := time.NewTicker(500 * time.Millisecond)
 		defer ticker.Stop()
-		
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -339,9 +339,9 @@ func TestAgentStateConsistency(t *testing.T) {
 	// Verify state transitions follow expected sequence
 	stateMutex.Lock()
 	defer stateMutex.Unlock()
-	
+
 	assert.Greater(t, len(states), 0, "No state transitions recorded")
-	
+
 	// Verify that states follow a logical progression
 	expectedProgression := map[state.WorkflowState][]state.WorkflowState{
 		state.StateClaim:     {state.StateWorkspace},
@@ -356,7 +356,7 @@ func TestAgentStateConsistency(t *testing.T) {
 	for i := 0; i < len(states)-1; i++ {
 		currentState := states[i]
 		nextState := states[i+1]
-		
+
 		if validNext, exists := expectedProgression[currentState]; exists {
 			found := false
 			for _, valid := range validNext {
@@ -365,7 +365,7 @@ func TestAgentStateConsistency(t *testing.T) {
 					break
 				}
 			}
-			assert.True(t, found, 
+			assert.True(t, found,
 				fmt.Sprintf("Invalid state transition from %s to %s", currentState, nextState))
 		}
 	}

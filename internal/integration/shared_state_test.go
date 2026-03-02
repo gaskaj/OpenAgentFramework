@@ -36,7 +36,7 @@ func TestSharedStateManagement(t *testing.T) {
 			UpdatedAt:   time.Now(),
 		},
 		{
-			AgentType:   "developer-2", 
+			AgentType:   "developer-2",
 			IssueNumber: 502,
 			IssueTitle:  "State test 2",
 			State:       state.StateAnalyze,
@@ -96,7 +96,7 @@ func TestSharedStateManagement(t *testing.T) {
 				}
 			}
 			require.NotNil(t, originalState, "Could not find original state for %s", loadedState.AgentType)
-			
+
 			// Verify consistency
 			assert.Equal(t, originalState.IssueNumber, loadedState.IssueNumber)
 			assert.Equal(t, originalState.IssueTitle, loadedState.IssueTitle)
@@ -116,18 +116,18 @@ func TestSharedStateManagement(t *testing.T) {
 
 		// Each writer updates a different field of the same state
 		targetState := testStates[0]
-		
+
 		for i := 0; i < numWriters; i++ {
 			wg.Add(1)
 			go func(writerID int) {
 				defer wg.Done()
-				
+
 				// Create a modified copy
 				updatedState := *targetState
 				updatedState.State = state.WorkflowState(fmt.Sprintf("test-state-%d", writerID))
 				updatedState.UpdatedAt = time.Now()
 				updatedState.Error = fmt.Sprintf("Writer %d was here", writerID)
-				
+
 				err := te.store.Save(ctx, &updatedState)
 				writeErrors <- err
 			}(i)
@@ -145,7 +145,7 @@ func TestSharedStateManagement(t *testing.T) {
 		finalState, err := te.store.Load(ctx, targetState.AgentType)
 		require.NoError(t, err)
 		require.NotNil(t, finalState)
-		
+
 		// Should have one of the writer's modifications
 		assert.Contains(t, string(finalState.State), "test-state-")
 		assert.Contains(t, finalState.Error, "Writer")
@@ -155,16 +155,16 @@ func TestSharedStateManagement(t *testing.T) {
 	t.Run("state_list_consistency", func(t *testing.T) {
 		allStates, err := te.store.List(ctx)
 		require.NoError(t, err)
-		
+
 		// Should have at least our test states
 		assert.GreaterOrEqual(t, len(allStates), len(testStates))
-		
+
 		// Verify each test state is present
 		stateMap := make(map[string]*state.AgentWorkState)
 		for _, s := range allStates {
 			stateMap[s.AgentType] = s
 		}
-		
+
 		for _, originalState := range testStates {
 			foundState, exists := stateMap[originalState.AgentType]
 			assert.True(t, exists, "State for %s should be in list", originalState.AgentType)
@@ -182,7 +182,7 @@ func TestConcurrentResourceAccess(t *testing.T) {
 	defer te.Cleanup()
 
 	// Simulate multiple agents trying to claim the same issue
-	sharedIssue := te.SimulateGitHubIssue(510, "Concurrent access test", 
+	sharedIssue := te.SimulateGitHubIssue(510, "Concurrent access test",
 		"Testing concurrent access to shared resources", []string{"agent:ready"})
 
 	const numAgents = 5
@@ -206,7 +206,7 @@ func TestConcurrentResourceAccess(t *testing.T) {
 	go func() {
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
-		
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -256,14 +256,14 @@ func TestConcurrentResourceAccess(t *testing.T) {
 	// Verify that only one agent actually claimed and processed the issue
 	claimMutex.Lock()
 	defer claimMutex.Unlock()
-	
+
 	// In a well-designed system, only one agent should successfully claim the issue
 	// However, due to race conditions, multiple agents might attempt to claim
 	t.Logf("Agents that attempted to claim issue %d: %v", sharedIssue.Number, claimingAgents)
-	
+
 	// At least one agent should have claimed it
 	assert.Greater(t, len(claimingAgents), 0, "At least one agent should have claimed the issue")
-	
+
 	// Verify the issue was labeled as claimed
 	te.AssertIssueLabels(sharedIssue.Number, []string{"agent:claimed"})
 }
@@ -294,7 +294,7 @@ func TestRaceConditionDetection(t *testing.T) {
 	// Start goroutines that concurrently read and write to the same state
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(2) // One for read, one for write
-		
+
 		// Reader goroutine
 		go func(id int) {
 			defer wg.Done()
@@ -307,7 +307,7 @@ func TestRaceConditionDetection(t *testing.T) {
 				time.Sleep(time.Millisecond) // Small delay to increase chance of race
 			}
 		}(i)
-		
+
 		// Writer goroutine
 		go func(id int) {
 			defer wg.Done()
@@ -316,7 +316,7 @@ func TestRaceConditionDetection(t *testing.T) {
 				updateState.State = state.WorkflowState(fmt.Sprintf("state-%d-%d", id, j))
 				updateState.UpdatedAt = time.Now()
 				updateState.Error = fmt.Sprintf("Updated by goroutine %d iteration %d", id, j)
-				
+
 				err := te.store.Save(ctx, &updateState)
 				if err != nil {
 					errors <- fmt.Errorf("writer %d iteration %d: %w", id, j, err)
@@ -353,7 +353,7 @@ func TestStateConsistencyUnderFailure(t *testing.T) {
 	defer te.Cleanup()
 
 	// Create an agent and start processing
-	issue := te.SimulateGitHubIssue(530, "Failure consistency test", 
+	issue := te.SimulateGitHubIssue(530, "Failure consistency test",
 		"Testing state consistency when failures occur", []string{"agent:ready"})
 
 	devAgent, err := te.CreateDeveloperAgent()
@@ -395,7 +395,7 @@ func TestStateConsistencyUnderFailure(t *testing.T) {
 		assert.Equal(t, issue.Number, finalState.IssueNumber)
 		assert.Equal(t, issue.Title, finalState.IssueTitle)
 		assert.Equal(t, "developer", finalState.AgentType)
-		
+
 		// Verify timestamps are reasonable
 		assert.False(t, finalState.CreatedAt.IsZero(), "CreatedAt should be set")
 		assert.False(t, finalState.UpdatedAt.IsZero(), "UpdatedAt should be set")
@@ -408,7 +408,7 @@ func TestStateConsistencyUnderFailure(t *testing.T) {
 	for _, label := range labels {
 		labelMap[label] = true
 	}
-	
+
 	// Should have at least claimed the issue
 	if !labelMap["agent:claimed"] && finalState != nil {
 		// If we have final state but no claimed label, there's an inconsistency
@@ -435,7 +435,7 @@ func TestLongRunningStateOperations(t *testing.T) {
 		// Batch operations
 		for i := 0; i < batchSize; i++ {
 			wg.Add(2) // Save and Load
-			
+
 			agentType := fmt.Sprintf("long-test-agent-%d-%d", batch, i)
 			testState := &state.AgentWorkState{
 				AgentType:   agentType,
@@ -454,7 +454,7 @@ func TestLongRunningStateOperations(t *testing.T) {
 				}
 			}(testState)
 
-			// Load operation  
+			// Load operation
 			go func(agentType string) {
 				defer wg.Done()
 				if _, err := te.store.Load(ctx, agentType); err != nil {
@@ -484,7 +484,7 @@ func TestLongRunningStateOperations(t *testing.T) {
 	}
 
 	duration := time.Since(startTime)
-	t.Logf("Completed %d state operations in %v (avg: %v per operation)", 
+	t.Logf("Completed %d state operations in %v (avg: %v per operation)",
 		numOperations*2, duration, duration/time.Duration(numOperations*2))
 
 	// Performance check - should complete within reasonable time
@@ -493,8 +493,8 @@ func TestLongRunningStateOperations(t *testing.T) {
 	// Verify final state count
 	allStates, err := te.store.List(ctx)
 	require.NoError(t, err)
-	
+
 	// Should have at least the states we created (might have more from other tests)
-	assert.GreaterOrEqual(t, len(allStates), numOperations, 
+	assert.GreaterOrEqual(t, len(allStates), numOperations,
 		"Should have at least %d states, got %d", numOperations, len(allStates))
 }

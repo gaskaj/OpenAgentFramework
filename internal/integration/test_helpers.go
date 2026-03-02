@@ -38,15 +38,15 @@ type TestEnvironment struct {
 // NewTestEnvironment creates a fresh test environment for each test
 func NewTestEnvironment(t *testing.T) *TestEnvironment {
 	tempDir := t.TempDir()
-	
+
 	// Create test configuration
 	cfg := &config.Config{
 		GitHub: config.GitHubConfig{
-			Owner:      "test-owner",
-			Repo:       "test-repo",
-			Token:      "test-token",
+			Owner:        "test-owner",
+			Repo:         "test-repo",
+			Token:        "test-token",
 			PollInterval: 5 * time.Second,
-			WatchLabels: []string{"agent:ready"},
+			WatchLabels:  []string{"agent:ready"},
 		},
 		Claude: config.ClaudeConfig{
 			APIKey: "test-api-key",
@@ -64,8 +64,8 @@ func NewTestEnvironment(t *testing.T) *TestEnvironment {
 			Enabled: true,
 		},
 		Decomposition: config.DecompositionConfig{
-			Enabled:             true,
-			MaxIterationBudget:  50,
+			Enabled:            true,
+			MaxIterationBudget: 50,
 			MaxSubtasks:        5,
 		},
 	}
@@ -83,9 +83,9 @@ func NewTestEnvironment(t *testing.T) *TestEnvironment {
 
 	// Create observability components using config types
 	loggingConfig := config.LoggingConfig{
-		Level:              "debug",
-		Format:             "json",
-		EnableCorrelation:  true,
+		Level:             "debug",
+		Format:            "json",
+		EnableCorrelation: true,
 		StructuredLogging: config.StructuredLoggingConfig{
 			Enabled:           true,
 			Format:            "json",
@@ -98,11 +98,11 @@ func NewTestEnvironment(t *testing.T) *TestEnvironment {
 				IncludeAgentMetadata: true,
 			},
 			WorkflowTracking: config.WorkflowTrackingConfig{
-				Enabled:           true,
-				TrackHandoffs:     true,
-				TrackDecisions:    true,
+				Enabled:            true,
+				TrackHandoffs:      true,
+				TrackDecisions:     true,
 				IncludePerformance: true,
-				TrackToolUsage:    true,
+				TrackToolUsage:     true,
 			},
 			Performance: config.PerformanceLoggingConfig{
 				TrackDurations:  true,
@@ -112,7 +112,7 @@ func NewTestEnvironment(t *testing.T) *TestEnvironment {
 			},
 		},
 	}
-	
+
 	structuredLogger := observability.NewStructuredLogger(loggingConfig)
 
 	metrics := observability.NewMetrics(structuredLogger)
@@ -187,7 +187,7 @@ func (te *TestEnvironment) CreateOrchestrator(agents []agent.Agent) *orchestrato
 func (te *TestEnvironment) RunWithTimeout(timeout time.Duration, fn func(context.Context) error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	
+
 	return fn(ctx)
 }
 
@@ -207,9 +207,9 @@ func (te *TestEnvironment) AssertIssueLabels(issueNumber int, expectedLabels []s
 	for _, label := range labels {
 		labelMap[label] = true
 	}
-	
+
 	for _, expected := range expectedLabels {
-		require.True(te.t, labelMap[expected], 
+		require.True(te.t, labelMap[expected],
 			fmt.Sprintf("expected label %s not found, got: %v", expected, labels))
 	}
 }
@@ -224,7 +224,7 @@ func (te *TestEnvironment) AssertCommentCreated(issueNumber int, commentSubstrin
 			break
 		}
 	}
-	require.True(te.t, found, 
+	require.True(te.t, found,
 		fmt.Sprintf("expected comment containing '%s' not found", commentSubstring))
 }
 
@@ -238,7 +238,7 @@ func (te *TestEnvironment) AssertPRCreated(expectedTitle string) {
 			break
 		}
 	}
-	require.True(te.t, found, 
+	require.True(te.t, found,
 		fmt.Sprintf("expected PR with title '%s' not found", expectedTitle))
 }
 
@@ -287,19 +287,19 @@ func (te *TestEnvironment) SimulateAgentFailure(agentType string, err error) {
 // SimulateConcurrentAccess simulates concurrent access to shared resources
 func (te *TestEnvironment) SimulateConcurrentAccess(concurrency int, fn func(int) error) error {
 	errCh := make(chan error, concurrency)
-	
+
 	for i := 0; i < concurrency; i++ {
 		go func(id int) {
 			errCh <- fn(id)
 		}(i)
 	}
-	
+
 	for i := 0; i < concurrency; i++ {
 		if err := <-errCh; err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -307,10 +307,10 @@ func (te *TestEnvironment) SimulateConcurrentAccess(concurrency int, fn func(int
 func (te *TestEnvironment) WaitForWorkflowTransition(agentType string, targetState state.WorkflowState, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	
+
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():

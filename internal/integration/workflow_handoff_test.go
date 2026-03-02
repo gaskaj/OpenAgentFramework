@@ -25,11 +25,11 @@ func TestAgentHandoffWorkflows(t *testing.T) {
 			name: "developer_to_qa_handoff",
 			setupScenario: func(te *TestEnvironment) (*MockIssue, []agent.Agent) {
 				issue := te.SimulateGitHubIssue(301, "Handoff test", "Testing developer to QA handoff", []string{"agent:ready"})
-				
+
 				// Create developer agent
 				devAgent, err := te.CreateDeveloperAgent()
 				require.NoError(t, err)
-				
+
 				// Note: In a real scenario, we'd have a QA agent here
 				// For now, we'll test the developer agent completing its workflow
 				return issue, []agent.Agent{devAgent}
@@ -44,12 +44,12 @@ func TestAgentHandoffWorkflows(t *testing.T) {
 			setupScenario: func(te *TestEnvironment) (*MockIssue, []agent.Agent) {
 				// Setup Claude to indicate issue is too complex
 				te.claudeClient.SetResponse("", "COMPLEXITY_ASSESSMENT: TOO_COMPLEX\nThis epic requires decomposition into 3 subtasks:\n1. Subtask A\n2. Subtask B\n3. Subtask C")
-				
+
 				issue := te.SimulateGitHubIssue(302, "Epic feature", "Large epic that needs decomposition", []string{"agent:ready"})
-				
+
 				devAgent, err := te.CreateDeveloperAgent()
 				require.NoError(t, err)
-				
+
 				return issue, []agent.Agent{devAgent}
 			},
 			expectedStates: map[string]state.WorkflowState{
@@ -64,7 +64,7 @@ func TestAgentHandoffWorkflows(t *testing.T) {
 				issue1 := te.SimulateGitHubIssue(303, "Issue 1", "First concurrent issue", []string{"agent:ready"})
 				te.SimulateGitHubIssue(304, "Issue 2", "Second concurrent issue", []string{"agent:ready"})
 				te.SimulateGitHubIssue(305, "Issue 3", "Third concurrent issue", []string{"agent:ready"})
-				
+
 				// Create multiple developer agents
 				var agents []agent.Agent
 				for i := 0; i < 2; i++ {
@@ -72,7 +72,7 @@ func TestAgentHandoffWorkflows(t *testing.T) {
 					require.NoError(t, err)
 					agents = append(agents, devAgent)
 				}
-				
+
 				return issue1, agents
 			},
 			expectedStates: map[string]state.WorkflowState{
@@ -130,7 +130,7 @@ func TestContextPreservationDuringHandoffs(t *testing.T) {
 	te := NewTestEnvironment(t)
 	defer te.Cleanup()
 
-	issue := te.SimulateGitHubIssue(310, "Context preservation test", 
+	issue := te.SimulateGitHubIssue(310, "Context preservation test",
 		"Testing that context is preserved during agent handoffs", []string{"agent:ready"})
 
 	devAgent, err := te.CreateDeveloperAgent()
@@ -149,7 +149,7 @@ func TestContextPreservationDuringHandoffs(t *testing.T) {
 	go func() {
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
-		
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -254,7 +254,7 @@ func TestErrorHandlingInAgentHandoffs(t *testing.T) {
 			te := NewTestEnvironment(t)
 			defer te.Cleanup()
 
-			issue := te.SimulateGitHubIssue(320+len(scenario.name), 
+			issue := te.SimulateGitHubIssue(320+len(scenario.name),
 				fmt.Sprintf("Error handling test: %s", scenario.name),
 				"Testing error handling during handoffs", []string{"agent:ready"})
 
@@ -312,9 +312,9 @@ func TestAgentHandoffPerformance(t *testing.T) {
 	numIssues := 5
 	issues := make([]*MockIssue, numIssues)
 	for i := 0; i < numIssues; i++ {
-		issues[i] = te.SimulateGitHubIssue(400+i, 
+		issues[i] = te.SimulateGitHubIssue(400+i,
 			fmt.Sprintf("Performance test issue %d", i),
-			fmt.Sprintf("Testing handoff performance with issue %d", i), 
+			fmt.Sprintf("Testing handoff performance with issue %d", i),
 			[]string{"agent:ready"})
 	}
 
@@ -325,7 +325,7 @@ func TestAgentHandoffPerformance(t *testing.T) {
 
 	// Measure total processing time
 	startTime := time.Now()
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -384,12 +384,12 @@ func (te *TestEnvironment) verifyHandoffArtifacts(t *testing.T, issueNumber int,
 		// Verify developer completed its work
 		te.AssertCommentCreated(issueNumber, "Analysis complete")
 		// In a real scenario, we'd verify QA agent picked up the work
-		
+
 	case "epic_issue_decomposition_handoff":
 		// Verify decomposition artifacts
 		te.AssertCommentCreated(issueNumber, "Analysis complete")
 		// Verify child issues were created (this would require mock GitHub to support issue creation)
-		
+
 	case "concurrent_multi_agent_handoffs":
 		// Verify that at least some processing occurred
 		comments := te.githubClient.GetIssueComments(issueNumber)
@@ -406,12 +406,12 @@ func (te *TestEnvironment) verifyErrorHandlingArtifacts(t *testing.T, issueNumbe
 		for _, label := range labels {
 			labelMap[label] = true
 		}
-		
+
 		// Might have claimed but then failed
 		if labelMap["agent:failed"] {
 			te.AssertCommentCreated(issueNumber, "failed")
 		}
-		
+
 	case "temporary_github_error_with_recovery":
 		// Should have successful completion artifacts after recovery
 		te.AssertIssueLabels(issueNumber, []string{"agent:claimed"})
