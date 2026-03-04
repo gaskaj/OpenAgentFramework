@@ -74,11 +74,24 @@ type WorkspacePersistence struct {
 
 // NewWorkspacePersistence creates a new workspace persistence manager.
 func NewWorkspacePersistence(persistenceConfig config.PersistenceConfig, baseDir string, logger *slog.Logger) *WorkspacePersistence {
+	return NewWorkspacePersistenceWithAppConfig(persistenceConfig, baseDir, logger, nil)
+}
+
+// NewWorkspacePersistenceWithAppConfig creates a new workspace persistence manager with app config for repo-specific paths.
+func NewWorkspacePersistenceWithAppConfig(persistenceConfig config.PersistenceConfig, baseDir string, logger *slog.Logger, appConfig *config.Config) *WorkspacePersistence {
 	if logger == nil {
 		logger = slog.Default()
 	}
 
-	snapshotDir := filepath.Join(baseDir, ".snapshots")
+	// Use repo-specific base directory if config is provided
+	var actualBaseDir string
+	if appConfig != nil {
+		actualBaseDir = appConfig.GetWorkspacePath(baseDir)
+	} else {
+		actualBaseDir = baseDir
+	}
+
+	snapshotDir := filepath.Join(actualBaseDir, ".snapshots")
 	
 	return &WorkspacePersistence{
 		config:      persistenceConfig,

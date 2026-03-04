@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/gaskaj/DeveloperAndQAAgent/internal/config"
 )
 
 // CleanupStrategy defines how workspaces should be cleaned up.
@@ -106,6 +108,11 @@ type Scheduler struct {
 
 // NewScheduler creates a new cleanup scheduler.
 func NewScheduler(manager Manager, config ManagerConfig, logger *slog.Logger) *Scheduler {
+	return NewSchedulerWithAppConfig(manager, config, logger, nil)
+}
+
+// NewSchedulerWithAppConfig creates a new cleanup scheduler with app config for repo-specific paths.
+func NewSchedulerWithAppConfig(manager Manager, config ManagerConfig, logger *slog.Logger, appConfig *config.Config) *Scheduler {
 	// Create default cleanup strategy
 	strategy := &CompositeStrategy{
 		Mode: "any",

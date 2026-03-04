@@ -33,6 +33,14 @@ func NewLogCleanupManager(cleanupConfig config.LogCleanupConfig) *LogCleanupMana
 	}
 }
 
+// NewLogCleanupManagerWithConfig creates a new log cleanup manager with app config for repo-specific paths
+func NewLogCleanupManagerWithConfig(cleanupConfig config.LogCleanupConfig, appConfig *config.Config) *LogCleanupManager {
+	return &LogCleanupManager{
+		config: cleanupConfig,
+		done:   make(chan struct{}),
+	}
+}
+
 // Start begins log cleanup monitoring for the specified log directory
 func (m *LogCleanupManager) Start(ctx context.Context, logDir string) error {
 	if !m.config.Enabled {
@@ -84,19 +92,38 @@ func (m *LogCleanupManager) Stop() error {
 
 // CleanupOldLogs performs immediate log cleanup based on retention policies
 func (m *LogCleanupManager) CleanupOldLogs(logDir string) error {
+	return m.CleanupOldLogsForRepo(logDir, "")
+}
+
+// CleanupOldLogsForRepo performs immediate log cleanup for a specific repository
+// If repoPath is empty, cleans up the entire logDir (backward compatibility)
+// If repoPath is provided, only cleans up logs for that specific owner/repo
+func (m *LogCleanupManager) CleanupOldLogsForRepo(logDir, repoPath string) error {
 	if !m.config.Enabled {
 		return nil
 	}
 
+	// Determine actual log directory to clean up
+	var targetLogDir string
+	if repoPath != "" {
+		targetLogDir = filepath.Join(logDir, repoPath)
+		// Check if repo-specific directory exists
+		if _, err := os.Stat(targetLogDir); os.IsNotExist(err) {
+			return nil // No logs for this repo, nothing to clean up
+		}
+	} else {
+		targetLogDir = logDir
+	}
+
 	// Get all log files in directory
-	logFiles, err := m.getLogFiles(logDir)
+	logFiles, err := m.getLogFiles(targetLogDir)
 	if err != nil {
 		return fmt.Errorf("getting log files: %w", err)
 	}
 
 	// Check disk space and cleanup if needed
 	if m.config.MinFreeDiskMB > 0 {
-		if err := m.cleanupByDiskSpace(logDir, logFiles); err != nil {
+		if err := m.cleanupByDiskSpace(targetLogDir, logFiles); err != nil {
 			return fmt.Errorf("disk space cleanup: %w", err)
 		}
 	}
