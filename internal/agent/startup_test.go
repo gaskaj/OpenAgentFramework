@@ -113,7 +113,7 @@ func TestStartupValidator_ValidateAndRecoverStartup(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, report)
-	assert.False(t, report.Valid) // Should be invalid due to orphaned work
+	assert.False(t, report.Valid)      // Should be invalid due to orphaned work
 	assert.True(t, report.StartupSafe) // But still safe to start
 	assert.Len(t, report.OrphanedWorkFound, 1)
 	assert.Equal(t, 123, report.OrphanedWorkFound[0].IssueNumber)
@@ -227,10 +227,10 @@ func TestStartupValidator_ValidateAndRecoverStartup_WithValidationIssues(t *test
 		OrphanedWork: []*state.OrphanedWorkItem{},
 		StateDrifts: []*state.StateDrift{
 			{
-				Type:        state.DriftTypeIssueState,
-				LocalState:  state.StateImplement,
+				Type:          state.DriftTypeIssueState,
+				LocalState:    state.StateImplement,
 				ExternalState: "closed",
-				CanReconcile: true,
+				CanReconcile:  true,
 			},
 		},
 		RecommendedActions: []*state.RecommendedAction{

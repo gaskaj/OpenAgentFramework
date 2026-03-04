@@ -37,7 +37,7 @@ func TestRepoSpecificPaths(t *testing.T) {
 
 	repo2Config := &config.Config{
 		GitHub: config.GitHubConfig{
-			Owner: "owner2", 
+			Owner: "owner2",
 			Repo:  "repo2",
 		},
 		Logging: config.LoggingConfig{
@@ -87,22 +87,22 @@ func TestRepoSpecificPaths(t *testing.T) {
 
 		// Create workspace managers for each repo
 		manager1, err := workspace.NewManagerWithAppConfig(workspace.ManagerConfig{
-			BaseDir:           baseWorkspaceDir,
-			MaxSizeMB:         100,
-			MinFreeDiskMB:     50,
-			MaxConcurrent:     5,
-			CleanupEnabled:    false,
+			BaseDir:        baseWorkspaceDir,
+			MaxSizeMB:      100,
+			MinFreeDiskMB:  50,
+			MaxConcurrent:  5,
+			CleanupEnabled: false,
 		}, logger, repo1Config)
 		if err != nil {
 			t.Fatalf("Failed to create manager1: %v", err)
 		}
 
 		manager2, err := workspace.NewManagerWithAppConfig(workspace.ManagerConfig{
-			BaseDir:           baseWorkspaceDir,
-			MaxSizeMB:         100,
-			MinFreeDiskMB:     50,
-			MaxConcurrent:     5,
-			CleanupEnabled:    false,
+			BaseDir:        baseWorkspaceDir,
+			MaxSizeMB:      100,
+			MinFreeDiskMB:  50,
+			MaxConcurrent:  5,
+			CleanupEnabled: false,
 		}, logger, repo2Config)
 		if err != nil {
 			t.Fatalf("Failed to create manager2: %v", err)
@@ -147,11 +147,11 @@ func TestRepoSpecificPaths(t *testing.T) {
 
 		// Create workspace manager for repo1
 		manager1, err := workspace.NewManagerWithAppConfig(workspace.ManagerConfig{
-			BaseDir:           baseWorkspaceDir,
-			MaxSizeMB:         100,
-			MinFreeDiskMB:     50,
-			MaxConcurrent:     5,
-			CleanupEnabled:    true,
+			BaseDir:        baseWorkspaceDir,
+			MaxSizeMB:      100,
+			MinFreeDiskMB:  50,
+			MaxConcurrent:  5,
+			CleanupEnabled: true,
 		}, logger, repo1Config)
 		if err != nil {
 			t.Fatalf("Failed to create manager1: %v", err)

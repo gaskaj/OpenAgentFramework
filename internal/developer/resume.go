@@ -17,31 +17,31 @@ type SnapshotRestorer interface {
 
 // ResumeManager handles intelligent resume operations for developer workflows.
 type ResumeManager struct {
-	persistence   SnapshotRestorer
-	logger        *slog.Logger
-	recoveryMgr   any
+	persistence SnapshotRestorer
+	logger      *slog.Logger
+	recoveryMgr any
 }
 
 // ResumePoint represents an optimal point to resume work from.
 type ResumePoint struct {
-	Stage           string                 `json:"stage"`
-	Snapshot        *workspace.WorkspaceSnapshot `json:"snapshot"`
-	RecommendedActions []ResumeAction       `json:"recommended_actions"`
-	ConfidenceLevel ResumeConfidence       `json:"confidence_level"`
-	RiskAssessment  ResumeRisk             `json:"risk_assessment"`
-	EstimatedSavings time.Duration          `json:"estimated_savings"`
+	Stage              string                       `json:"stage"`
+	Snapshot           *workspace.WorkspaceSnapshot `json:"snapshot"`
+	RecommendedActions []ResumeAction               `json:"recommended_actions"`
+	ConfidenceLevel    ResumeConfidence             `json:"confidence_level"`
+	RiskAssessment     ResumeRisk                   `json:"risk_assessment"`
+	EstimatedSavings   time.Duration                `json:"estimated_savings"`
 }
 
 // ResumeAction represents an action recommended during resume.
 type ResumeAction string
 
 const (
-	ResumeActionValidateFiles     ResumeAction = "validate_files"
-	ResumeActionRestoreGitState   ResumeAction = "restore_git_state"
-	ResumeActionCleanWorkspace    ResumeAction = "clean_workspace"
-	ResumeActionVerifyBuild       ResumeAction = "verify_build"
-	ResumeActionRestoreContext    ResumeAction = "restore_context"
-	ResumeActionStartFresh        ResumeAction = "start_fresh"
+	ResumeActionValidateFiles   ResumeAction = "validate_files"
+	ResumeActionRestoreGitState ResumeAction = "restore_git_state"
+	ResumeActionCleanWorkspace  ResumeAction = "clean_workspace"
+	ResumeActionVerifyBuild     ResumeAction = "verify_build"
+	ResumeActionRestoreContext  ResumeAction = "restore_context"
+	ResumeActionStartFresh      ResumeAction = "start_fresh"
 )
 
 // ResumeConfidence represents confidence in resume operation safety.
@@ -66,7 +66,7 @@ const (
 type ResumeStrategy string
 
 const (
-	ResumeStrategyFromSnapshot ResumeStrategy = "from_snapshot"
+	ResumeStrategyFromSnapshot   ResumeStrategy = "from_snapshot"
 	ResumeStrategyFromCheckpoint ResumeStrategy = "from_checkpoint"
 	ResumeStrategyCleanRestart   ResumeStrategy = "clean_restart"
 	ResumeStrategyManualReview   ResumeStrategy = "manual_review"
@@ -87,7 +87,7 @@ func NewResumeManager(persistence SnapshotRestorer, recoveryMgr any, logger *slo
 
 // AnalyzeResumeOptions analyzes available resume options for an agent restart.
 func (rm *ResumeManager) AnalyzeResumeOptions(ctx context.Context, agentState *state.AgentWorkState) (*ResumePoint, error) {
-	rm.logger.Info("analyzing resume options", 
+	rm.logger.Info("analyzing resume options",
 		"agent_type", agentState.AgentType,
 		"issue", agentState.IssueNumber,
 		"state", agentState.State,
@@ -124,7 +124,7 @@ func (rm *ResumeManager) AnalyzeResumeOptions(ctx context.Context, agentState *s
 
 // ExecuteResume executes the recommended resume strategy.
 func (rm *ResumeManager) ExecuteResume(ctx context.Context, resumePoint *ResumePoint, workspaceDir string) error {
-	rm.logger.Info("executing resume", 
+	rm.logger.Info("executing resume",
 		"stage", resumePoint.Stage,
 		"actions", len(resumePoint.RecommendedActions),
 		"confidence", resumePoint.ConfidenceLevel,
@@ -132,8 +132,8 @@ func (rm *ResumeManager) ExecuteResume(ctx context.Context, resumePoint *ResumeP
 
 	// Execute recommended actions in order
 	for i, action := range resumePoint.RecommendedActions {
-		rm.logger.Debug("executing resume action", 
-			"action", action, 
+		rm.logger.Debug("executing resume action",
+			"action", action,
 			"step", fmt.Sprintf("%d/%d", i+1, len(resumePoint.RecommendedActions)),
 		)
 
@@ -155,10 +155,10 @@ func (rm *ResumeManager) DetermineOptimalResumeStrategy(ctx context.Context, age
 
 	snapshotAge := time.Since(snapshot.Timestamp)
 	maxResumeAge := 24 * time.Hour // Could be configurable
-	
+
 	if snapshotAge > maxResumeAge {
-		rm.logger.Info("snapshot too old for resume", 
-			"age", snapshotAge, 
+		rm.logger.Info("snapshot too old for resume",
+			"age", snapshotAge,
 			"max_age", maxResumeAge,
 		)
 		return ResumeStrategyCleanRestart
@@ -202,7 +202,7 @@ func (rm *ResumeManager) CalculateResumeSavings(resumePoint *ResumePoint) time.D
 		// Adjust based on confidence and risk
 		confidence_multiplier := rm.getConfidenceMultiplier(resumePoint.ConfidenceLevel)
 		risk_adjustment := rm.getRiskAdjustment(resumePoint.RiskAssessment)
-		
+
 		adjusted := time.Duration(float64(savings) * confidence_multiplier * risk_adjustment)
 		return adjusted
 	}
@@ -245,8 +245,8 @@ func (rm *ResumeManager) createFallbackResumePoint(agentState *state.AgentWorkSt
 			ResumeActionStartFresh,
 		},
 		ConfidenceLevel:  ResumeConfidenceHigh, // High confidence in clean start
-		RiskAssessment:   ResumeRiskLow,       // Low risk in clean start
-		EstimatedSavings: 0,                   // No savings from clean start
+		RiskAssessment:   ResumeRiskLow,        // Low risk in clean start
+		EstimatedSavings: 0,                    // No savings from clean start
 	}
 }
 

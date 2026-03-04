@@ -97,35 +97,35 @@ func DemonstrateRepoSpecificPaths() error {
 
 	// Create workspace managers for each repo
 	fmt.Println("=== Creating Workspace Managers (with repo-specific paths) ===")
-	
+
 	manager1, err := workspace.NewManagerWithAppConfig(workspace.ManagerConfig{
-		BaseDir:           baseWorkspaceDir,
-		MaxSizeMB:         1024,
-		MinFreeDiskMB:     2048,
-		MaxConcurrent:     5,
-		CleanupEnabled:    true,
+		BaseDir:        baseWorkspaceDir,
+		MaxSizeMB:      1024,
+		MinFreeDiskMB:  2048,
+		MaxConcurrent:  5,
+		CleanupEnabled: true,
 	}, slog.Default(), config1)
 	if err != nil {
 		return fmt.Errorf("failed to create workspace manager 1: %w", err)
 	}
 
 	manager2, err := workspace.NewManagerWithAppConfig(workspace.ManagerConfig{
-		BaseDir:           baseWorkspaceDir,
-		MaxSizeMB:         1024,
-		MinFreeDiskMB:     2048,
-		MaxConcurrent:     5,
-		CleanupEnabled:    true,
+		BaseDir:        baseWorkspaceDir,
+		MaxSizeMB:      1024,
+		MinFreeDiskMB:  2048,
+		MaxConcurrent:  5,
+		CleanupEnabled: true,
 	}, slog.Default(), config2)
 	if err != nil {
 		return fmt.Errorf("failed to create workspace manager 2: %w", err)
 	}
 
 	manager3, err := workspace.NewManagerWithAppConfig(workspace.ManagerConfig{
-		BaseDir:           baseWorkspaceDir,
-		MaxSizeMB:         1024,
-		MinFreeDiskMB:     2048,
-		MaxConcurrent:     5,
-		CleanupEnabled:    true,
+		BaseDir:        baseWorkspaceDir,
+		MaxSizeMB:      1024,
+		MinFreeDiskMB:  2048,
+		MaxConcurrent:  5,
+		CleanupEnabled: true,
 	}, slog.Default(), config3)
 	if err != nil {
 		return fmt.Errorf("failed to create workspace manager 3: %w", err)
@@ -133,7 +133,7 @@ func DemonstrateRepoSpecificPaths() error {
 
 	// Create workspaces for different issues
 	fmt.Println("=== Creating Workspaces ===")
-	
+
 	ws1, err := manager1.CreateWorkspace(nil, 164)
 	if err != nil {
 		return fmt.Errorf("failed to create workspace 1: %w", err)
@@ -159,12 +159,12 @@ func DemonstrateRepoSpecificPaths() error {
 	// Demonstrate isolation - cleanup only affects the specific repo
 	fmt.Println("\n=== Demonstrating Isolation ===")
 	fmt.Println("Cleaning up workspace for gaskaj/DeveloperAndQAAgent#164...")
-	
+
 	err = manager1.CleanupWorkspace(nil, 164)
 	if err != nil {
 		return fmt.Errorf("failed to cleanup workspace 1: %w", err)
 	}
-	
+
 	fmt.Println("Workspace cleaned up. Other repos' workspaces remain untouched:")
 	fmt.Printf("  microsoft/vscode#4567: %s (still exists: %v)\n", ws2.Path, dirExists(ws2.Path))
 	fmt.Printf("  golang/go#8901: %s (still exists: %v)\n", ws3.Path, dirExists(ws3.Path))
@@ -188,7 +188,7 @@ func showDirStructure(path string, indent string) {
 		}
 
 		fmt.Printf("%s%s%s", indent, prefix, entry.Name())
-		
+
 		if entry.IsDir() {
 			fmt.Println("/")
 			nextIndent := indent
@@ -197,7 +197,7 @@ func showDirStructure(path string, indent string) {
 			} else {
 				nextIndent += "│   "
 			}
-			
+
 			fullPath := filepath.Join(path, entry.Name())
 			showDirStructure(fullPath, nextIndent)
 		} else {

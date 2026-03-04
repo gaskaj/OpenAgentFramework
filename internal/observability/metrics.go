@@ -2,17 +2,18 @@ package observability
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"time"
 )
 
 // Metrics provides performance monitoring and metrics collection
 type Metrics struct {
-	mu      sync.RWMutex
-	counters map[string]int64
-	gauges   map[string]float64
+	mu         sync.RWMutex
+	counters   map[string]int64
+	gauges     map[string]float64
 	histograms map[string]*Histogram
-	logger  *StructuredLogger
+	logger     *StructuredLogger
 }
 
 // Histogram tracks distribution of values over time
@@ -113,7 +114,7 @@ func (t *Timer) StopWithContext(ctx context.Context, operation string) time.Dura
 func (m *Metrics) GetCounters() map[string]int64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	result := make(map[string]int64)
 	for k, v := range m.counters {
 		result[k] = v
@@ -125,7 +126,7 @@ func (m *Metrics) GetCounters() map[string]int64 {
 func (m *Metrics) GetGauges() map[string]float64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	result := make(map[string]float64)
 	for k, v := range m.gauges {
 		result[k] = v
@@ -139,18 +140,18 @@ func (m *Metrics) GetHistogramSummary(name string, labels map[string]string) *Hi
 	m.mu.RLock()
 	hist, exists := m.histograms[key]
 	m.mu.RUnlock()
-	
+
 	if !exists {
 		return nil
 	}
-	
+
 	hist.mu.RLock()
 	defer hist.mu.RUnlock()
-	
+
 	if hist.count == 0 {
 		return &HistogramSummary{}
 	}
-	
+
 	return &HistogramSummary{
 		Count: hist.count,
 		Sum:   hist.sum,
@@ -171,23 +172,23 @@ func (m *Metrics) RecordAgentOperation(ctx context.Context, agentType, operation
 		"agent_type": agentType,
 		"operation":  operation,
 	}
-	
+
 	m.Inc("agent_operations_total", labels)
 	m.Observe("agent_operation_duration_ms", float64(duration.Milliseconds()), labels)
-	
+
 	if success {
 		m.Inc("agent_operations_success_total", labels)
 	} else {
 		m.Inc("agent_operations_failure_total", labels)
 	}
-	
+
 	// Log to structured logger
 	if m.logger != nil {
 		successStr := "success"
 		if !success {
 			successStr = "failure"
 		}
-		m.logger.LogPerformanceMetric(ctx, "agent_operation", float64(duration.Milliseconds()), "ms", 
+		m.logger.LogPerformanceMetric(ctx, "agent_operation", float64(duration.Milliseconds()), "ms",
 			map[string]string{
 				"agent_type": agentType,
 				"operation":  operation,
@@ -201,12 +202,12 @@ func (m *Metrics) RecordLLMCall(ctx context.Context, model string, inputTokens, 
 	labels := map[string]string{
 		"model": model,
 	}
-	
+
 	m.Inc("llm_calls_total", labels)
 	m.Add("llm_input_tokens_total", int64(inputTokens), labels)
 	m.Add("llm_output_tokens_total", int64(outputTokens), labels)
 	m.Observe("llm_call_duration_ms", float64(duration.Milliseconds()), labels)
-	
+
 	if success {
 		m.Inc("llm_calls_success_total", labels)
 	} else {
@@ -220,7 +221,7 @@ func (m *Metrics) RecordWorkflowTransition(ctx context.Context, fromState, toSta
 		"from_state": fromState,
 		"to_state":   toState,
 	}
-	
+
 	m.Inc("workflow_transitions_total", labels)
 }
 
@@ -230,7 +231,7 @@ func (m *Metrics) RecordOrphanedWorkDetected(ctx context.Context, agentType stri
 		"agent_type":    agentType,
 		"recovery_type": recoveryType,
 	}
-	
+
 	m.Inc("orphaned_work_detected_total", labels)
 	m.Observe("orphaned_work_age_hours", ageHours, labels)
 }
@@ -241,7 +242,7 @@ func (m *Metrics) RecordStateDriftResolved(ctx context.Context, agentType string
 		"agent_type": agentType,
 		"drift_type": driftType,
 	}
-	
+
 	m.Inc("state_drift_resolution_total", labels)
 	if success {
 		m.Inc("state_drift_resolved_total", labels)
@@ -253,13 +254,13 @@ func (m *Metrics) RecordStateDriftResolved(ctx context.Context, agentType string
 // RecordRecoveryAction records metrics for recovery actions
 func (m *Metrics) RecordRecoveryAction(ctx context.Context, agentType string, actionType string, duration time.Duration, success bool) {
 	labels := map[string]string{
-		"agent_type":   agentType,
-		"action_type":  actionType,
+		"agent_type":  agentType,
+		"action_type": actionType,
 	}
-	
+
 	m.Inc("recovery_actions_total", labels)
 	m.Observe("recovery_action_duration_ms", float64(duration.Milliseconds()), labels)
-	
+
 	if success {
 		m.Inc("recovery_actions_success_total", labels)
 	} else {
@@ -272,12 +273,12 @@ func (m *Metrics) RecordValidationResults(ctx context.Context, agentType string,
 	labels := map[string]string{
 		"agent_type": agentType,
 	}
-	
+
 	m.Inc("validation_runs_total", labels)
 	m.Observe("validation_duration_ms", float64(duration.Milliseconds()), labels)
 	m.Observe("validation_issues_found", float64(issuesCount), labels)
 	m.Observe("validation_drifts_found", float64(driftCount), labels)
-	
+
 	if valid {
 		m.Inc("validation_passed_total", labels)
 	} else {
@@ -288,8 +289,14 @@ func (m *Metrics) RecordValidationResults(ctx context.Context, agentType string,
 // metricKey creates a unique key for a metric with labels
 func (m *Metrics) metricKey(name string, labels map[string]string) string {
 	key := name
-	for k, v := range labels {
-		key += ":" + k + "=" + v
+	// Sort label keys for deterministic key ordering
+	keys := make([]string, 0, len(labels))
+	for k := range labels {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		key += ":" + k + "=" + labels[k]
 	}
 	return key
 }

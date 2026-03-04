@@ -41,7 +41,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 
 	// Create enriched correlation context for this issue
 	ctx = observability.EnsureCorrelationContext(ctx, string(d.Type()), issueNum)
-	
+
 	// Add issue metadata to correlation context
 	ctx = observability.WithMetadata(ctx, "issue_title", issueTitle)
 	ctx = observability.WithMetadata(ctx, "issue_number", fmt.Sprintf("%d", issueNum))
@@ -54,18 +54,18 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 	// Step 1: Claim — also removes agent:ready to prevent re-processing on restart.
 	ctx = observability.WithWorkflowStage(ctx, observability.WorkflowStageClaim)
 	d.updateStatus(state.StateClaim, issueNum, "claiming issue")
-	
+
 	// Check for context cancellation before proceeding
 	if ctx.Err() != nil {
 		d.logger().Info("context cancelled before claiming issue", "issue", issueNum)
 		return ctx.Err()
 	}
-	
+
 	// Log workflow transition
 	if d.Deps.StructuredLogger != nil {
 		d.Deps.StructuredLogger.LogWorkflowTransition(ctx, issueNum, "idle", "claim", "new_issue_detected")
 	}
-	
+
 	if err := d.claimIssue(ctx, issueNum); err != nil {
 		return fmt.Errorf("claiming issue: %w", err)
 	}
@@ -94,7 +94,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 	// Step 2: Setup workspace — moved before analyze so Claude has real codebase context.
 	ctx = observability.WithWorkflowStage(ctx, observability.WorkflowStage("workspace"))
 	d.updateStatus(state.StateWorkspace, issueNum, "setting up workspace")
-	
+
 	// Ensure workspace cleanup on exit
 	var workspaceCreated bool
 	defer func() {
@@ -109,18 +109,18 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 			}
 		}
 	}()
-	
+
 	// Check for context cancellation before workspace setup
 	if ctx.Err() != nil {
 		d.logger().Info("context cancelled during workspace setup", "issue", issueNum)
 		return d.handleGracefulShutdown(ctx, ws, "workspace_setup")
 	}
-	
+
 	// Log workflow transition
 	if d.Deps.StructuredLogger != nil {
 		d.Deps.StructuredLogger.LogWorkflowTransition(ctx, issueNum, "claim", "workspace", "setup_development_environment")
 	}
-	
+
 	// Create managed workspace
 	if d.workspaceManager == nil {
 		d.failIssue(ctx, ws, fmt.Errorf("workspace manager not initialized"))
@@ -132,7 +132,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 		return err
 	}
 	workspaceCreated = true
-	
+
 	branchName := fmt.Sprintf("agent/issue-%d", issueNum)
 	ws.BranchName = branchName
 	ws.State = state.StateWorkspace
@@ -153,7 +153,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 		d.failIssue(ctx, ws, fmt.Errorf("creating branch: %w", err))
 		return err
 	}
-	
+
 	// Validate workspace size after clone
 	if err := d.validateWorkspaceSize(ctx, managedWorkspace.Path); err != nil {
 		d.failIssue(ctx, ws, fmt.Errorf("workspace size validation failed: %w", err))
@@ -184,23 +184,23 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 	// Step 3: Analyze — now receives real codebase structure.
 	ctx = observability.WithWorkflowStage(ctx, observability.WorkflowStageAnalyze)
 	d.updateStatus(state.StateAnalyze, issueNum, "analyzing requirements")
-	
+
 	// Log workflow transition
 	if d.Deps.StructuredLogger != nil {
 		d.Deps.StructuredLogger.LogWorkflowTransition(ctx, issueNum, "workspace", "analyze", "begin_requirement_analysis")
 	}
-	
+
 	var labels []string
 	for _, l := range issue.Labels {
 		labels = append(labels, l.GetName())
 	}
 	issueContext := claude.FormatIssueContext(issueNum, issueTitle, issueBody, labels)
-	
+
 	// Log LLM call for analysis
 	startTime := time.Now()
 	plan, tooComplex, err := d.analyze(ctx, issueContext, repoContext)
 	analysisTime := time.Since(startTime)
-	
+
 	if err != nil {
 		// Log analysis failure
 		if d.Deps.StructuredLogger != nil {
@@ -212,7 +212,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 		d.failIssue(ctx, ws, fmt.Errorf("analysis failed: %w", err))
 		return err
 	}
-	
+
 	// Log successful analysis with decision point
 	if d.Deps.StructuredLogger != nil {
 		d.Deps.StructuredLogger.LogDecisionPoint(ctx, string(d.Type()), "analyze_complete", "issue analysis successful", map[string]interface{}{
@@ -235,7 +235,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 	// Step 3.5: Proactive decomposition
 	if tooComplex && d.Deps.Config.Decomposition.Enabled {
 		ctx = observability.WithWorkflowStage(ctx, observability.WorkflowStageDecompose)
-		
+
 		// Log decision point and workflow transition
 		if d.Deps.StructuredLogger != nil {
 			d.Deps.StructuredLogger.LogDecisionPoint(ctx, string(d.Type()), "proactive_decomposition", "issue exceeds complexity threshold", map[string]interface{}{
@@ -244,7 +244,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 			})
 			d.Deps.StructuredLogger.LogWorkflowTransition(ctx, issueNum, "analyze", "decompose", "proactive_decomposition_triggered")
 		}
-		
+
 		d.logger().Info("issue too complex, decomposing", "issue", issueNum)
 		childNums, err := d.decompose(ctx, issueNum, issueContext, plan)
 		if err != nil {
@@ -269,12 +269,12 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 	// Step 4: Implement
 	ctx = observability.WithWorkflowStage(ctx, observability.WorkflowStageImplement)
 	d.updateStatus(state.StateImplement, issueNum, "implementing changes")
-	
+
 	// Log workflow transition
 	if d.Deps.StructuredLogger != nil {
 		d.Deps.StructuredLogger.LogWorkflowTransition(ctx, issueNum, "analyze", "implement", "begin_implementation")
 	}
-	
+
 	_ = d.Deps.GitHub.AddLabels(ctx, issueNum, []string{"agent:in-progress"})
 	ws.State = state.StateImplement
 	ws.UpdatedAt = time.Now()
@@ -292,7 +292,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 	implementStartTime := time.Now()
 	if err := d.implement(ctx, repo, issueContext, plan, repoContext); err != nil {
 		implementDuration := time.Since(implementStartTime)
-		
+
 		// Reactive decomposition: if iteration limit hit and decomposition enabled.
 		if claude.IsMaxIterationsError(err) && d.Deps.Config.Decomposition.Enabled {
 			// Log decision point for reactive decomposition
@@ -304,7 +304,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 				})
 				d.Deps.StructuredLogger.LogWorkflowTransition(ctx, issueNum, "implement", "decompose", "iteration_limit_exceeded")
 			}
-			
+
 			d.logger().Info("iteration limit hit, reactively decomposing", "issue", issueNum)
 			childNums, decompErr := d.reactiveDecompose(ctx, issueNum, issueContext, plan)
 			if decompErr != nil {
@@ -325,7 +325,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 			d.updateStatus(state.StateIdle, 0, "waiting for issues")
 			return nil
 		}
-		
+
 		// Log implementation failure
 		if d.Deps.StructuredLogger != nil {
 			d.Deps.StructuredLogger.LogDecisionPoint(ctx, string(d.Type()), "implementation_failed", err.Error(), map[string]interface{}{
@@ -333,7 +333,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 				"error_type":                 "implementation_error",
 			})
 		}
-		
+
 		d.failIssue(ctx, ws, fmt.Errorf("implementation failed: %w", err))
 		return err
 	}
@@ -404,12 +404,12 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 	// Step 7: Validate PR checks
 	ctx = observability.WithWorkflowStage(ctx, observability.WorkflowStage("validate"))
 	d.updateStatus(state.StateValidation, issueNum, "validating PR checks")
-	
+
 	// Log workflow transition
 	if d.Deps.StructuredLogger != nil {
 		d.Deps.StructuredLogger.LogWorkflowTransition(ctx, issueNum, "pr", "validate", "monitoring_pr_checks")
 	}
-	
+
 	ws.State = state.StateValidation
 	ws.UpdatedAt = time.Now()
 	_ = d.Deps.Store.Save(ctx, ws)
@@ -443,7 +443,7 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 // handleGracefulShutdown handles graceful shutdown during workflow processing
 func (d *DeveloperAgent) handleGracefulShutdown(ctx context.Context, ws *state.AgentWorkState, stage string) error {
 	d.logger().Info("handling graceful shutdown", "issue", ws.IssueNumber, "stage", stage)
-	
+
 	// Create checkpoint for interrupted work
 	checkpointer := NewCheckpointManager(d.Deps.Store, d.logger())
 	if err := checkpointer.CreateCheckpoint(ctx, ws, stage, map[string]interface{}{
@@ -453,7 +453,7 @@ func (d *DeveloperAgent) handleGracefulShutdown(ctx context.Context, ws *state.A
 	}); err != nil {
 		d.logger().Error("failed to create shutdown checkpoint", "error", err)
 	}
-	
+
 	// Clean up workspace on shutdown if in early stages
 	if shouldCleanupWorkspaceOnShutdown(ws.State) {
 		if err := d.workspaceManager.CleanupWorkspace(context.Background(), ws.IssueNumber); err != nil {
@@ -465,19 +465,19 @@ func (d *DeveloperAgent) handleGracefulShutdown(ctx context.Context, ws *state.A
 			d.logger().Error("failed to mark workspace as stale on shutdown", "issue", ws.IssueNumber, "error", err)
 		}
 	}
-	
+
 	// Reset issue to ready state if we haven't made significant progress
 	if shouldResetOnShutdown(ws.State) {
 		if err := d.resetIssueToReady(ctx, ws.IssueNumber); err != nil {
 			d.logger().Error("failed to reset issue to ready", "issue", ws.IssueNumber, "error", err)
 		}
 	}
-	
+
 	// Log workflow transition
 	if d.Deps.StructuredLogger != nil {
 		d.Deps.StructuredLogger.LogWorkflowTransition(ctx, ws.IssueNumber, string(ws.State), "interrupted", "graceful_shutdown")
 	}
-	
+
 	return ctx.Err()
 }
 
@@ -543,16 +543,16 @@ func shouldResetOnShutdown(currentState state.State) bool {
 // resetIssueToReady resets an issue back to ready state
 func (d *DeveloperAgent) resetIssueToReady(ctx context.Context, issueNum int) error {
 	d.logger().Info("resetting issue to ready state", "issue", issueNum)
-	
+
 	// Remove agent:claimed and agent:in-progress labels
 	_ = d.Deps.GitHub.RemoveLabel(ctx, issueNum, "agent:claimed")
 	_ = d.Deps.GitHub.RemoveLabel(ctx, issueNum, "agent:in-progress")
-	
+
 	// Add agent:ready label
 	if err := d.Deps.GitHub.AddLabels(ctx, issueNum, []string{"agent:ready"}); err != nil {
 		return fmt.Errorf("adding ready label: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -560,7 +560,7 @@ func (d *DeveloperAgent) resetIssueToReady(ctx context.Context, issueNum int) er
 func (d *DeveloperAgent) validatePRChecks(ctx context.Context, ws *state.AgentWorkState, repo *gitops.Repo, issueContext, plan string) error {
 	prNumber := ws.PRNumber
 	issueNum := ws.IssueNumber
-	
+
 	d.logger().Info("starting PR validation", "pr", prNumber, "issue", issueNum)
 	_ = d.Deps.GitHub.CreateComment(ctx, issueNum, "🤖 Monitoring PR checks and will fix any failures...")
 
@@ -570,7 +570,7 @@ func (d *DeveloperAgent) validatePRChecks(ctx context.Context, ws *state.AgentWo
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		d.logger().Info("validating PR checks", "pr", prNumber, "attempt", attempt)
-		
+
 		result, err := d.Deps.GitHub.ValidatePR(ctx, prNumber, opts)
 		if err != nil {
 			return fmt.Errorf("validating PR %d (attempt %d): %w", prNumber, attempt, err)
@@ -579,7 +579,7 @@ func (d *DeveloperAgent) validatePRChecks(ctx context.Context, ws *state.AgentWo
 		// Success! All checks are passing
 		if result.AllChecksPassing && result.Status == ghub.PRCheckStatusSuccess {
 			d.logger().Info("PR validation successful", "pr", prNumber, "total_checks", result.TotalChecks)
-			_ = d.Deps.GitHub.CreateComment(ctx, issueNum, 
+			_ = d.Deps.GitHub.CreateComment(ctx, issueNum,
 				fmt.Sprintf("✅ All PR checks are passing! (%d checks completed successfully)", result.TotalChecks))
 			return nil
 		}
@@ -587,11 +587,11 @@ func (d *DeveloperAgent) validatePRChecks(ctx context.Context, ws *state.AgentWo
 		// Checks failed, try to fix them
 		if result.Status == ghub.PRCheckStatusFailed {
 			d.logger().Warn("PR checks failed", "pr", prNumber, "failed_checks", len(result.FailedChecks))
-			
+
 			failureAnalysis := result.AnalyzeFailures()
-			
+
 			// Post failure analysis as comment
-			failureComment := fmt.Sprintf("❌ **PR checks failed (attempt %d/%d)**\n\n%s\n\n🔧 Attempting to fix these issues...", 
+			failureComment := fmt.Sprintf("❌ **PR checks failed (attempt %d/%d)**\n\n%s\n\n🔧 Attempting to fix these issues...",
 				attempt, maxRetries, failureAnalysis)
 			_ = d.Deps.GitHub.CreateComment(ctx, issueNum, failureComment)
 
@@ -604,9 +604,9 @@ func (d *DeveloperAgent) validatePRChecks(ctx context.Context, ws *state.AgentWo
 			fixErr := d.fixPRFailures(ctx, repo, result, issueContext, plan)
 			if fixErr != nil {
 				d.logger().Error("failed to fix PR failures", "pr", prNumber, "attempt", attempt, "error", fixErr)
-				_ = d.Deps.GitHub.CreateComment(ctx, issueNum, 
+				_ = d.Deps.GitHub.CreateComment(ctx, issueNum,
 					fmt.Sprintf("⚠️ Failed to automatically fix PR issues (attempt %d): %v", attempt, fixErr))
-				
+
 				// Continue to next attempt
 				continue
 			}
@@ -637,7 +637,7 @@ func (d *DeveloperAgent) validatePRChecks(ctx context.Context, ws *state.AgentWo
 			}
 
 			d.logger().Info("fixes pushed, waiting for new check run", "pr", prNumber, "attempt", attempt)
-			_ = d.Deps.GitHub.CreateComment(ctx, issueNum, 
+			_ = d.Deps.GitHub.CreateComment(ctx, issueNum,
 				fmt.Sprintf("🔄 Fixes pushed! Waiting for checks to run again... (attempt %d/%d)", attempt, maxRetries))
 
 			// Wait a bit for the new checks to start
@@ -651,17 +651,17 @@ func (d *DeveloperAgent) validatePRChecks(ctx context.Context, ws *state.AgentWo
 // fixPRFailures attempts to fix the failed PR checks using Claude
 func (d *DeveloperAgent) fixPRFailures(ctx context.Context, repo *gitops.Repo, result *ghub.PRValidationResult, issueContext, originalPlan string) error {
 	fixPrompt := result.GenerateFixPrompt(issueContext, originalPlan)
-	
+
 	d.logger().Info("generating fixes for PR failures", "failed_checks", len(result.FailedChecks))
-	
+
 	executor := d.createToolExecutor(repo)
-	
+
 	// Use a shorter iteration limit for fixes to prevent getting stuck
 	maxIter := 10
 	if d.Deps.Config.Decomposition.Enabled {
 		maxIter = d.Deps.Config.Decomposition.MaxIterationBudget / 2
 	}
-	
+
 	conv := claude.NewConversation(
 		d.Deps.Claude,
 		SystemPrompt,
@@ -675,7 +675,7 @@ func (d *DeveloperAgent) fixPRFailures(ctx context.Context, repo *gitops.Repo, r
 	if err != nil {
 		return fmt.Errorf("generating fixes: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -685,7 +685,7 @@ func (d *DeveloperAgent) claimIssue(ctx context.Context, number int) error {
 		d.logger().Warn("failed to assign self to issue", "issue", number, "error", err)
 		// Don't fail claiming if assignment fails - continue with labeling and comment
 	}
-	
+
 	if err := d.Deps.GitHub.AddLabels(ctx, number, []string{"agent:claimed"}); err != nil {
 		return err
 	}

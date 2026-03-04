@@ -20,13 +20,13 @@ type StateValidator struct {
 
 // ValidationReport contains the results of a state consistency validation.
 type ValidationReport struct {
-	Valid              bool                    `json:"valid"`
-	IssuesFound        []*ValidationIssue      `json:"issues_found"`
-	OrphanedWork       []*OrphanedWorkItem     `json:"orphaned_work"`
-	StateDrifts        []*StateDrift           `json:"state_drifts"`
-	RecommendedActions []*RecommendedAction    `json:"recommended_actions"`
-	ValidatedAt        time.Time               `json:"validated_at"`
-	ValidationDuration time.Duration           `json:"validation_duration"`
+	Valid              bool                 `json:"valid"`
+	IssuesFound        []*ValidationIssue   `json:"issues_found"`
+	OrphanedWork       []*OrphanedWorkItem  `json:"orphaned_work"`
+	StateDrifts        []*StateDrift        `json:"state_drifts"`
+	RecommendedActions []*RecommendedAction `json:"recommended_actions"`
+	ValidatedAt        time.Time            `json:"validated_at"`
+	ValidationDuration time.Duration        `json:"validation_duration"`
 }
 
 // ValidationIssue represents a specific consistency problem found during validation.
@@ -41,16 +41,16 @@ type ValidationIssue struct {
 
 // OrphanedWorkItem represents work that has been abandoned or is inconsistent.
 type OrphanedWorkItem struct {
-	AgentType     string            `json:"agent_type"`
-	IssueNumber   int               `json:"issue_number"`
-	State         WorkflowState     `json:"state"`
-	LastUpdate    time.Time         `json:"last_update"`
-	AgeHours      float64           `json:"age_hours"`
-	BranchName    string            `json:"branch_name,omitempty"`
-	WorkspaceDir  string            `json:"workspace_dir,omitempty"`
-	PRNumber      int               `json:"pr_number,omitempty"`
-	RecoveryType  OrphanRecoveryType `json:"recovery_type"`
-	Details       map[string]string `json:"details,omitempty"`
+	AgentType    string             `json:"agent_type"`
+	IssueNumber  int                `json:"issue_number"`
+	State        WorkflowState      `json:"state"`
+	LastUpdate   time.Time          `json:"last_update"`
+	AgeHours     float64            `json:"age_hours"`
+	BranchName   string             `json:"branch_name,omitempty"`
+	WorkspaceDir string             `json:"workspace_dir,omitempty"`
+	PRNumber     int                `json:"pr_number,omitempty"`
+	RecoveryType OrphanRecoveryType `json:"recovery_type"`
+	Details      map[string]string  `json:"details,omitempty"`
 }
 
 // StateDrift represents inconsistency between local state and external systems.
@@ -79,12 +79,12 @@ type RecommendedAction struct {
 type ValidationIssueType string
 
 const (
-	IssueTypeOrphanedClaim      ValidationIssueType = "orphaned_claim"
-	IssueTypeInconsistentState  ValidationIssueType = "inconsistent_state"
-	IssueTypeStaleWorkspace     ValidationIssueType = "stale_workspace"
-	IssueTypeBranchDrift        ValidationIssueType = "branch_drift"
-	IssueTypePRInconsistency    ValidationIssueType = "pr_inconsistency"
-	IssueTypeCheckpointCorrupt  ValidationIssueType = "checkpoint_corrupt"
+	IssueTypeOrphanedClaim     ValidationIssueType = "orphaned_claim"
+	IssueTypeInconsistentState ValidationIssueType = "inconsistent_state"
+	IssueTypeStaleWorkspace    ValidationIssueType = "stale_workspace"
+	IssueTypeBranchDrift       ValidationIssueType = "branch_drift"
+	IssueTypePRInconsistency   ValidationIssueType = "pr_inconsistency"
+	IssueTypeCheckpointCorrupt ValidationIssueType = "checkpoint_corrupt"
 )
 
 type ValidationSeverity string
@@ -116,11 +116,11 @@ const (
 type ActionType string
 
 const (
-	ActionTypeCleanup    ActionType = "cleanup"
-	ActionTypeResume     ActionType = "resume"
-	ActionTypeReconcile  ActionType = "reconcile"
-	ActionTypeReset      ActionType = "reset"
-	ActionTypeManualFix  ActionType = "manual_fix"
+	ActionTypeCleanup   ActionType = "cleanup"
+	ActionTypeResume    ActionType = "resume"
+	ActionTypeReconcile ActionType = "reconcile"
+	ActionTypeReset     ActionType = "reset"
+	ActionTypeManualFix ActionType = "manual_fix"
 )
 
 type ActionPriority string
@@ -152,9 +152,9 @@ func NewStateValidator(store Store, github ghub.Client, logger *slog.Logger) *St
 // ValidateWorkState validates the consistency of a specific agent work state.
 func (v *StateValidator) ValidateWorkState(ctx context.Context, workState *AgentWorkState) (*ValidationReport, error) {
 	start := time.Now()
-	
-	v.logger.Info("validating work state consistency", 
-		"agent_type", workState.AgentType, 
+
+	v.logger.Info("validating work state consistency",
+		"agent_type", workState.AgentType,
 		"issue_number", workState.IssueNumber,
 		"state", workState.State)
 
@@ -205,7 +205,7 @@ func (v *StateValidator) ValidateWorkState(ctx context.Context, workState *Agent
 	report.Valid = len(report.IssuesFound) == 0
 	report.ValidationDuration = time.Since(start)
 
-	v.logger.Info("validation completed", 
+	v.logger.Info("validation completed",
 		"valid", report.Valid,
 		"issues_found", len(report.IssuesFound),
 		"duration", report.ValidationDuration)
@@ -216,7 +216,7 @@ func (v *StateValidator) ValidateWorkState(ctx context.Context, workState *Agent
 // DetectOrphanedWork scans all stored states to find orphaned work items.
 func (v *StateValidator) DetectOrphanedWork(ctx context.Context) ([]*OrphanedWorkItem, error) {
 	v.logger.Info("scanning for orphaned work items")
-	
+
 	states, err := v.store.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listing agent states: %w", err)
@@ -262,7 +262,7 @@ func (v *StateValidator) DetectOrphanedWork(ctx context.Context) ([]*OrphanedWor
 
 // ReconcileState attempts to reconcile inconsistencies in the work state.
 func (v *StateValidator) ReconcileState(ctx context.Context, workState *AgentWorkState) error {
-	v.logger.Info("reconciling work state", 
+	v.logger.Info("reconciling work state",
 		"agent_type", workState.AgentType,
 		"issue_number", workState.IssueNumber)
 
@@ -282,7 +282,7 @@ func (v *StateValidator) ReconcileState(ctx context.Context, workState *AgentWor
 	for _, action := range report.RecommendedActions {
 		if action.Priority == PriorityUrgent || action.Priority == PriorityHigh {
 			if err := v.executeReconciliationAction(ctx, action, workState); err != nil {
-				v.logger.Error("failed to execute reconciliation action", 
+				v.logger.Error("failed to execute reconciliation action",
 					"action_type", action.Type,
 					"error", err)
 				reconcileErrors = append(reconcileErrors, err)
@@ -308,7 +308,7 @@ func (v *StateValidator) validateIssueStateConsistency(ctx context.Context, work
 	if err != nil {
 		v.addValidationIssue(report, IssueTypeInconsistentState, SeverityCritical,
 			fmt.Sprintf("Cannot fetch issue #%d from GitHub", workState.IssueNumber),
-			workState.AgentType, workState.IssueNumber, 
+			workState.AgentType, workState.IssueNumber,
 			map[string]string{"error": err.Error()})
 		return nil // Continue validation
 	}
@@ -341,7 +341,7 @@ func (v *StateValidator) validateIssueStateConsistency(ctx context.Context, work
 func (v *StateValidator) validateBranchConsistency(ctx context.Context, workState *AgentWorkState, report *ValidationReport) error {
 	// For now, just validate branch name pattern
 	// Full branch validation would require additional GitHub API calls
-	
+
 	// Validate branch name follows expected pattern
 	expectedBranch := fmt.Sprintf("agent/issue-%d", workState.IssueNumber)
 	if workState.BranchName != expectedBranch {
@@ -349,7 +349,7 @@ func (v *StateValidator) validateBranchConsistency(ctx context.Context, workStat
 			fmt.Sprintf("Branch name %s doesn't follow expected pattern %s", workState.BranchName, expectedBranch),
 			workState.AgentType, workState.IssueNumber,
 			map[string]string{
-				"actual_branch": workState.BranchName,
+				"actual_branch":   workState.BranchName,
 				"expected_branch": expectedBranch,
 			})
 	}
@@ -396,12 +396,12 @@ func (v *StateValidator) validateWorkspaceConsistency(ctx context.Context, workS
 	// - Git repository is properly initialized
 	// - Correct branch is checked out
 	// - Working directory is clean or has expected changes
-	
+
 	// For now, just add a basic check
 	v.logger.Debug("workspace consistency validation placeholder",
 		"workspace_dir", workState.WorkspaceDir,
 		"agent_type", workState.AgentType)
-	
+
 	return nil
 }
 
@@ -560,7 +560,7 @@ func (v *StateValidator) executeReconcileAction(ctx context.Context, action *Rec
 		if err := v.github.AddLabels(ctx, workState.IssueNumber, []string{"agent:claimed"}); err != nil {
 			return fmt.Errorf("adding claimed label: %w", err)
 		}
-		
+
 		// Remove ready label if present
 		if err := v.github.RemoveLabel(ctx, workState.IssueNumber, "agent:ready"); err != nil {
 			// Ignore error if label doesn't exist
@@ -576,16 +576,16 @@ func (v *StateValidator) executeResetAction(ctx context.Context, action *Recomme
 	// Reset to idle state and remove claimed label
 	workState.State = StateIdle
 	workState.UpdatedAt = time.Now()
-	
+
 	if err := v.store.Save(ctx, workState); err != nil {
 		return fmt.Errorf("saving reset state: %w", err)
 	}
-	
+
 	// Remove claimed label and add ready label
 	if err := v.github.RemoveLabel(ctx, workState.IssueNumber, "agent:claimed"); err != nil {
 		v.logger.Debug("could not remove claimed label", "error", err)
 	}
-	
+
 	if err := v.github.AddLabels(ctx, workState.IssueNumber, []string{"agent:ready"}); err != nil {
 		return fmt.Errorf("adding ready label: %w", err)
 	}
