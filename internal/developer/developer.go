@@ -28,15 +28,15 @@ type DeveloperAgent struct {
 func New(deps agent.Dependencies) (agent.Agent, error) {
 	// Create workspace manager configuration
 	workspaceConfig := workspace.ManagerConfig{
-		BaseDir:              deps.Config.Agents.Developer.WorkspaceDir,
-		MaxSizeMB:            deps.Config.Workspace.Limits.MaxSizeMB,
-		MinFreeDiskMB:        deps.Config.Workspace.Limits.MinFreeDiskMB,
-		MaxConcurrent:        deps.Config.Workspace.Cleanup.MaxConcurrent,
-		SuccessRetention:     deps.Config.Workspace.Cleanup.SuccessRetention,
-		FailureRetention:     deps.Config.Workspace.Cleanup.FailureRetention,
-		DiskCheckInterval:    deps.Config.Workspace.Monitoring.DiskCheckInterval,
-		CleanupInterval:      deps.Config.Workspace.Monitoring.CleanupInterval,
-		CleanupEnabled:       deps.Config.Workspace.Cleanup.Enabled,
+		BaseDir:           deps.Config.Agents.Developer.WorkspaceDir,
+		MaxSizeMB:         deps.Config.Workspace.Limits.MaxSizeMB,
+		MinFreeDiskMB:     deps.Config.Workspace.Limits.MinFreeDiskMB,
+		MaxConcurrent:     deps.Config.Workspace.Cleanup.MaxConcurrent,
+		SuccessRetention:  deps.Config.Workspace.Cleanup.SuccessRetention,
+		FailureRetention:  deps.Config.Workspace.Cleanup.FailureRetention,
+		DiskCheckInterval: deps.Config.Workspace.Monitoring.DiskCheckInterval,
+		CleanupInterval:   deps.Config.Workspace.Monitoring.CleanupInterval,
+		CleanupEnabled:    deps.Config.Workspace.Cleanup.Enabled,
 	}
 
 	// Use defaults for any zero values
@@ -141,7 +141,7 @@ func New(deps agent.Dependencies) (agent.Agent, error) {
 }
 
 // NewStartupValidator creates a startup validator - wrapper function.
-func NewStartupValidator(deps agent.Dependencies, validator *state.StateValidator) *StartupValidator {
+func NewStartupValidator(deps agent.Dependencies, validator state.Validator) *StartupValidator {
 	return &StartupValidator{
 		deps:      deps,
 		validator: validator,
@@ -152,14 +152,14 @@ func NewStartupValidator(deps agent.Dependencies, validator *state.StateValidato
 // StartupValidator handles agent initialization validation and recovery.
 type StartupValidator struct {
 	deps      agent.Dependencies
-	validator *state.StateValidator
+	validator state.Validator
 	logger    *slog.Logger
 }
 
 // ValidateAndRecoverStartup performs comprehensive startup validation and recovery.
 func (s *StartupValidator) ValidateAndRecoverStartup(ctx context.Context, agentType agent.AgentType) (*StartupValidationReport, error) {
 	start := time.Now()
-	
+
 	s.logger.Info("starting startup validation and recovery", "agent_type", agentType)
 
 	report := &StartupValidationReport{
@@ -256,7 +256,7 @@ func (s *StartupValidator) detectOrphanedWork(ctx context.Context, report *Start
 	if len(orphanedItems) > 0 {
 		report.Valid = false
 		s.logger.Warn("orphaned work detected", "count", len(orphanedItems))
-		
+
 		for _, orphan := range orphanedItems {
 			s.logger.Info("orphaned work details",
 				"agent_type", orphan.AgentType,
@@ -272,14 +272,14 @@ func (s *StartupValidator) detectOrphanedWork(ctx context.Context, report *Start
 
 // StartupValidationReport contains the results of startup validation.
 type StartupValidationReport struct {
-	Valid                bool                        `json:"valid"`
-	OrphanedWorkFound    []*state.OrphanedWorkItem   `json:"orphaned_work_found"`
-	RecoveryActions      []*RecoveryAction           `json:"recovery_actions"`
-	ValidationIssues     []*state.ValidationIssue    `json:"validation_issues"`
-	RecommendedActions   []*state.RecommendedAction  `json:"recommended_actions"`
-	StartupSafe          bool                        `json:"startup_safe"`
-	ValidationDuration   time.Duration               `json:"validation_duration"`
-	ValidatedAt          time.Time                   `json:"validated_at"`
+	Valid              bool                       `json:"valid"`
+	OrphanedWorkFound  []*state.OrphanedWorkItem  `json:"orphaned_work_found"`
+	RecoveryActions    []*RecoveryAction          `json:"recovery_actions"`
+	ValidationIssues   []*state.ValidationIssue   `json:"validation_issues"`
+	RecommendedActions []*state.RecommendedAction `json:"recommended_actions"`
+	StartupSafe        bool                       `json:"startup_safe"`
+	ValidationDuration time.Duration              `json:"validation_duration"`
+	ValidatedAt        time.Time                  `json:"validated_at"`
 }
 
 // RecoveryAction represents an action taken during startup recovery.
@@ -298,11 +298,11 @@ type RecoveryAction struct {
 type RecoveryActionType string
 
 const (
-	ActionCleanupOrphaned    RecoveryActionType = "cleanup_orphaned"
-	ActionResumeWork         RecoveryActionType = "resume_work"
-	ActionValidateState      RecoveryActionType = "validate_state"
-	ActionReconcileDrift     RecoveryActionType = "reconcile_drift"
-	ActionFlagForManual      RecoveryActionType = "flag_for_manual"
+	ActionCleanupOrphaned RecoveryActionType = "cleanup_orphaned"
+	ActionResumeWork      RecoveryActionType = "resume_work"
+	ActionValidateState   RecoveryActionType = "validate_state"
+	ActionReconcileDrift  RecoveryActionType = "reconcile_drift"
+	ActionFlagForManual   RecoveryActionType = "flag_for_manual"
 )
 
 // Type returns the developer agent type.
@@ -314,7 +314,7 @@ func (d *DeveloperAgent) Type() agent.AgentType {
 func (d *DeveloperAgent) Run(ctx context.Context) error {
 	// Ensure enriched correlation context for this agent run
 	ctx = observability.EnsureCorrelationContext(ctx, string(d.Type()), 0)
-	
+
 	// Log agent start with structured logging
 	if d.Deps.StructuredLogger != nil {
 		d.Deps.StructuredLogger.LogAgentStart(ctx, string(d.Type()), "developer agent started")
@@ -333,24 +333,24 @@ func (d *DeveloperAgent) Run(ctx context.Context) error {
 	go agent.Heartbeat(ctx, d.Type(), 60*time.Second, d.Deps.Logger)
 
 	err := d.poller.Run(ctx)
-	
+
 	// Log agent stop with metrics
 	var duration time.Duration
 	if timer != nil {
 		duration = timer.StopWithContext(ctx, "agent_lifecycle")
 	}
-	
+
 	if d.Deps.StructuredLogger != nil {
 		d.Deps.StructuredLogger.LogAgentStop(ctx, string(d.Type()), duration, err)
 	}
-	
+
 	return err
 }
 
 // Status returns the current agent status.
 func (d *DeveloperAgent) Status() agent.StatusReport {
 	status := d.status
-	
+
 	// Add workspace statistics
 	if stats, err := d.workspaceManager.GetWorkspaceStats(context.Background()); err == nil {
 		status.WorkspaceStats = &agent.WorkspaceStats{
@@ -360,7 +360,7 @@ func (d *DeveloperAgent) Status() agent.StatusReport {
 			DiskFreeMB:       stats.DiskFreeMB,
 		}
 	}
-	
+
 	return status
 }
 

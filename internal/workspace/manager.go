@@ -129,20 +129,37 @@ type managerImpl struct {
 
 // NewManager creates a new workspace manager with the given configuration.
 func NewManager(config ManagerConfig, logger *slog.Logger) (Manager, error) {
+	return NewManagerWithAppConfig(config, logger, nil)
+}
+
+// NewManagerWithAppConfig creates a new workspace manager with app config for repo-specific paths.
+func NewManagerWithAppConfig(config ManagerConfig, logger *slog.Logger, appConfig *config.Config) (Manager, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
 
-	// Ensure base directory exists
-	if err := os.MkdirAll(config.BaseDir, 0o755); err != nil {
-		return nil, fmt.Errorf("creating base directory %s: %w", config.BaseDir, err)
+	// Determine the actual workspace directory to use
+	var workspaceDir string
+	if appConfig != nil {
+		workspaceDir = appConfig.GetWorkspacePath(config.BaseDir)
+	} else {
+		workspaceDir = config.BaseDir
 	}
 
-	monitor := NewMonitor(config, logger)
-	persistence := NewWorkspacePersistence(config.Persistence, config.BaseDir, logger)
+	// Update config to use repo-specific path
+	repoSpecificConfig := config
+	repoSpecificConfig.BaseDir = workspaceDir
+
+	// Ensure workspace directory exists
+	if err := os.MkdirAll(workspaceDir, 0o755); err != nil {
+		return nil, fmt.Errorf("creating workspace directory %s: %w", workspaceDir, err)
+	}
+
+	monitor := NewMonitor(repoSpecificConfig, logger)
+	persistence := NewWorkspacePersistence(repoSpecificConfig.Persistence, repoSpecificConfig.BaseDir, logger)
 
 	mgr := &managerImpl{
-		config:      config,
+		config:      repoSpecificConfig,
 		logger:      logger,
 		monitor:     monitor,
 		workspaces:  make(map[int]*Workspace),

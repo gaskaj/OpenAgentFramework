@@ -17,8 +17,6 @@ import (
 	"github.com/gaskaj/DeveloperAndQAAgent/internal/state"
 )
 
-
-
 // FileState represents the state of a single file in the workspace.
 type FileState struct {
 	Path         string    `json:"path"`
@@ -30,9 +28,9 @@ type FileState struct {
 
 // GitSnapshot represents the git state of the workspace.
 type GitSnapshot struct {
-	Branch      string `json:"branch"`
-	CommitHash  string `json:"commit_hash"`
-	HasChanges  bool   `json:"has_changes"`
+	Branch      string   `json:"branch"`
+	CommitHash  string   `json:"commit_hash"`
+	HasChanges  bool     `json:"has_changes"`
 	StagedFiles []string `json:"staged_files"`
 }
 
@@ -54,32 +52,45 @@ type ConversationSnapshot struct {
 
 // WorkspaceSnapshot represents a complete snapshot of workspace state.
 type WorkspaceSnapshot struct {
-	ID              string               `json:"id"`
-	IssueNumber     int                  `json:"issue_number"`
-	Timestamp       time.Time            `json:"timestamp"`
-	FileStates      map[string]FileState `json:"file_states"`
-	GitState        GitSnapshot          `json:"git_state"`
-	ProgressMarkers []ProgressMarker     `json:"progress_markers"`
-	ClaudeContext   ConversationSnapshot `json:"claude_context"`
-	AgentState      *state.AgentWorkState `json:"agent_state"`
-	ImplementationHash string            `json:"implementation_hash"`
+	ID                 string                `json:"id"`
+	IssueNumber        int                   `json:"issue_number"`
+	Timestamp          time.Time             `json:"timestamp"`
+	FileStates         map[string]FileState  `json:"file_states"`
+	GitState           GitSnapshot           `json:"git_state"`
+	ProgressMarkers    []ProgressMarker      `json:"progress_markers"`
+	ClaudeContext      ConversationSnapshot  `json:"claude_context"`
+	AgentState         *state.AgentWorkState `json:"agent_state"`
+	ImplementationHash string                `json:"implementation_hash"`
 }
 
 // WorkspacePersistence manages persistence and recovery of workspace state.
 type WorkspacePersistence struct {
-	config        config.PersistenceConfig
-	logger        *slog.Logger
-	snapshotDir   string
+	config      config.PersistenceConfig
+	logger      *slog.Logger
+	snapshotDir string
 }
 
 // NewWorkspacePersistence creates a new workspace persistence manager.
 func NewWorkspacePersistence(persistenceConfig config.PersistenceConfig, baseDir string, logger *slog.Logger) *WorkspacePersistence {
+	return NewWorkspacePersistenceWithAppConfig(persistenceConfig, baseDir, logger, nil)
+}
+
+// NewWorkspacePersistenceWithAppConfig creates a new workspace persistence manager with app config for repo-specific paths.
+func NewWorkspacePersistenceWithAppConfig(persistenceConfig config.PersistenceConfig, baseDir string, logger *slog.Logger, appConfig *config.Config) *WorkspacePersistence {
 	if logger == nil {
 		logger = slog.Default()
 	}
 
-	snapshotDir := filepath.Join(baseDir, ".snapshots")
-	
+	// Use repo-specific base directory if config is provided
+	var actualBaseDir string
+	if appConfig != nil {
+		actualBaseDir = appConfig.GetWorkspacePath(baseDir)
+	} else {
+		actualBaseDir = baseDir
+	}
+
+	snapshotDir := filepath.Join(actualBaseDir, ".snapshots")
+
 	return &WorkspacePersistence{
 		config:      persistenceConfig,
 		logger:      logger,
@@ -135,7 +146,7 @@ func (wp *WorkspacePersistence) CreateSnapshot(ctx context.Context, workspaceDir
 	// Cleanup old snapshots
 	wp.cleanupOldSnapshots(agentState.IssueNumber)
 
-	wp.logger.Info("workspace snapshot created", 
+	wp.logger.Info("workspace snapshot created",
 		"snapshot_id", snapshot.ID,
 		"issue", agentState.IssueNumber,
 		"file_count", len(snapshot.FileStates),
@@ -242,7 +253,7 @@ func (wp *WorkspacePersistence) GetSnapshots(issueNumber int) ([]*WorkspaceSnaps
 // DeleteSnapshot removes a specific snapshot.
 func (wp *WorkspacePersistence) DeleteSnapshot(snapshotID string) error {
 	pattern := filepath.Join(wp.snapshotDir, fmt.Sprintf("*-%s.json*", snapshotID))
-	
+
 	files, err := filepath.Glob(pattern)
 	if err != nil {
 		return fmt.Errorf("finding snapshot files: %w", err)
@@ -343,30 +354,30 @@ func (wp *WorkspacePersistence) calculateFileHash(path string) (string, error) {
 // generateImplementationHash generates a hash representing the overall implementation state.
 func (wp *WorkspacePersistence) generateImplementationHash(snapshot *WorkspaceSnapshot) string {
 	hasher := sha256.New()
-	
+
 	// Include file hashes
 	for _, fileState := range snapshot.FileStates {
 		hasher.Write([]byte(fileState.Path + fileState.Hash))
 	}
-	
+
 	// Include git state
 	hasher.Write([]byte(snapshot.GitState.Branch + snapshot.GitState.CommitHash))
-	
+
 	// Include agent state
 	hasher.Write([]byte(fmt.Sprintf("%d:%s", snapshot.IssueNumber, snapshot.AgentState.State)))
-	
+
 	return hex.EncodeToString(hasher.Sum(nil))[:12] // First 12 chars for brevity
 }
 
 // saveSnapshot saves a snapshot to disk with optional compression.
 func (wp *WorkspacePersistence) saveSnapshot(snapshot *WorkspaceSnapshot) error {
-	filename := fmt.Sprintf("issue-%d-%s-%s.json", 
-		snapshot.IssueNumber, 
-		snapshot.Timestamp.Format("20060102-150405"), 
-		snapshot.ID[:8])
-	
+	filename := fmt.Sprintf("issue-%d-%s-%s.json",
+		snapshot.IssueNumber,
+		snapshot.Timestamp.Format("20060102-150405"),
+		snapshot.ID)
+
 	filePath := filepath.Join(wp.snapshotDir, filename)
-	
+
 	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling snapshot: %w", err)
@@ -403,7 +414,7 @@ func (wp *WorkspacePersistence) saveCompressed(filePath string, data []byte) err
 // loadSnapshot loads a snapshot from disk, handling compression automatically.
 func (wp *WorkspacePersistence) loadSnapshot(filePath string) (*WorkspaceSnapshot, error) {
 	var reader io.ReadCloser
-	
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err

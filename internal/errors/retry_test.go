@@ -77,33 +77,33 @@ func TestRetryPolicy(t *testing.T) {
 
 func TestRetryExecution(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	
+
 	t.Run("success on first attempt", func(t *testing.T) {
 		retryer := NewRetryer(DefaultRetryPolicy(), logger)
 		ctx := context.Background()
-		
+
 		callCount := 0
 		result, err := Execute(ctx, retryer, func(ctx context.Context, attempt int) (string, error) {
 			callCount++
 			return "success", nil
 		})
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, "success", result)
 		assert.Equal(t, 1, callCount)
 	})
-	
+
 	t.Run("success after retries", func(t *testing.T) {
 		retryer := NewRetryer(&RetryPolicy{
-			MaxAttempts:   3,
-			BaseDelay:     10 * time.Millisecond,
-			MaxDelay:      100 * time.Millisecond,
-			BackoffFactor: 2.0,
-			JitterFactor:  0.0, // No jitter for predictable testing
+			MaxAttempts:     3,
+			BaseDelay:       10 * time.Millisecond,
+			MaxDelay:        100 * time.Millisecond,
+			BackoffFactor:   2.0,
+			JitterFactor:    0.0, // No jitter for predictable testing
 			RetryableErrors: []ErrorType{ErrorTypeTemporary, ErrorTypeAPI},
 		}, logger)
 		ctx := context.Background()
-		
+
 		callCount := 0
 		result, err := Execute(ctx, retryer, func(ctx context.Context, attempt int) (string, error) {
 			callCount++
@@ -112,75 +112,75 @@ func TestRetryExecution(t *testing.T) {
 			}
 			return "success", nil
 		})
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, "success", result)
 		assert.Equal(t, 3, callCount)
 	})
-	
+
 	t.Run("non-retryable error", func(t *testing.T) {
 		retryer := NewRetryer(DefaultRetryPolicy(), logger)
 		ctx := context.Background()
-		
+
 		callCount := 0
 		result, err := Execute(ctx, retryer, func(ctx context.Context, attempt int) (string, error) {
 			callCount++
 			return "", NewAuthError("authentication failed", errors.New("auth error"))
 		})
-		
+
 		require.Error(t, err)
 		assert.Empty(t, result)
 		assert.Equal(t, 1, callCount) // Should not retry auth errors
 		assert.Contains(t, err.Error(), "non-retryable error")
 	})
-	
+
 	t.Run("retry exhaustion", func(t *testing.T) {
 		retryer := NewRetryer(&RetryPolicy{
-			MaxAttempts:   2,
-			BaseDelay:     10 * time.Millisecond,
-			MaxDelay:      100 * time.Millisecond,
-			BackoffFactor: 2.0,
-			JitterFactor:  0.0,
+			MaxAttempts:     2,
+			BaseDelay:       10 * time.Millisecond,
+			MaxDelay:        100 * time.Millisecond,
+			BackoffFactor:   2.0,
+			JitterFactor:    0.0,
 			RetryableErrors: []ErrorType{ErrorTypeTemporary, ErrorTypeAPI},
 		}, logger)
 		ctx := context.Background()
-		
+
 		callCount := 0
 		result, err := Execute(ctx, retryer, func(ctx context.Context, attempt int) (string, error) {
 			callCount++
 			return "", NewAPIError("always fails", errors.New("persistent error"))
 		})
-		
+
 		require.Error(t, err)
 		assert.Empty(t, result)
 		assert.Equal(t, 2, callCount) // Should retry once
 		assert.Contains(t, err.Error(), "operation failed after 2 attempts")
 	})
-	
+
 	t.Run("context cancellation", func(t *testing.T) {
 		retryer := NewRetryer(&RetryPolicy{
-			MaxAttempts:   5,
-			BaseDelay:     100 * time.Millisecond,
-			MaxDelay:      1 * time.Second,
-			BackoffFactor: 2.0,
-			JitterFactor:  0.0,
+			MaxAttempts:     5,
+			BaseDelay:       100 * time.Millisecond,
+			MaxDelay:        1 * time.Second,
+			BackoffFactor:   2.0,
+			JitterFactor:    0.0,
 			RetryableErrors: []ErrorType{ErrorTypeTemporary, ErrorTypeAPI},
 		}, logger)
-		
+
 		ctx, cancel := context.WithCancel(context.Background())
-		
+
 		callCount := 0
 		go func() {
 			// Cancel after first failure
 			time.Sleep(50 * time.Millisecond)
 			cancel()
 		}()
-		
+
 		result, err := Execute(ctx, retryer, func(ctx context.Context, attempt int) (string, error) {
 			callCount++
 			return "", NewAPIError("temporary failure", errors.New("api error"))
 		})
-		
+
 		require.Error(t, err)
 		assert.Empty(t, result)
 		assert.Equal(t, 1, callCount) // Should be interrupted during delay
@@ -191,14 +191,14 @@ func TestRetryExecution(t *testing.T) {
 func TestRetryDecorator(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	retryer := NewRetryer(&RetryPolicy{
-		MaxAttempts:   3,
-		BaseDelay:     10 * time.Millisecond,
-		MaxDelay:      100 * time.Millisecond,
-		BackoffFactor: 2.0,
-		JitterFactor:  0.0,
+		MaxAttempts:     3,
+		BaseDelay:       10 * time.Millisecond,
+		MaxDelay:        100 * time.Millisecond,
+		BackoffFactor:   2.0,
+		JitterFactor:    0.0,
 		RetryableErrors: []ErrorType{ErrorTypeTemporary, ErrorTypeAPI},
 	}, logger)
-	
+
 	callCount := 0
 	fn := func(ctx context.Context) (string, error) {
 		callCount++
@@ -207,11 +207,11 @@ func TestRetryDecorator(t *testing.T) {
 		}
 		return "decorated success", nil
 	}
-	
+
 	decoratedFn := RetryDecorator(retryer, fn)
-	
+
 	result, err := decoratedFn(context.Background())
-	
+
 	require.NoError(t, err)
 	assert.Equal(t, "decorated success", result)
 	assert.Equal(t, 2, callCount)
@@ -220,28 +220,33 @@ func TestRetryDecorator(t *testing.T) {
 func TestBackoffCalculation(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	retryer := NewRetryer(&RetryPolicy{
-		MaxAttempts:   5,
-		BaseDelay:     1 * time.Second,
-		MaxDelay:      10 * time.Second,
-		BackoffFactor: 2.0,
-		JitterFactor:  0.0, // No jitter for predictable testing
+		MaxAttempts:     5,
+		BaseDelay:       1 * time.Second,
+		MaxDelay:        10 * time.Second,
+		BackoffFactor:   2.0,
+		JitterFactor:    0.0, // No jitter for predictable testing
 		RetryableErrors: []ErrorType{ErrorTypeTemporary},
 	}, logger)
-	
+
 	testCases := []struct {
 		attempt       int
 		expectedDelay time.Duration
 	}{
-		{1, 1 * time.Second},   // Base delay
-		{2, 2 * time.Second},   // 1s * 2^1
-		{3, 4 * time.Second},   // 1s * 2^2
-		{4, 8 * time.Second},   // 1s * 2^3
-		{5, 10 * time.Second},  // Capped at max delay
+		{1, 1 * time.Second},  // Base delay
+		{2, 2 * time.Second},  // 1s * 2^1
+		{3, 4 * time.Second},  // 1s * 2^2
+		{4, 8 * time.Second},  // 1s * 2^3
+		{5, 10 * time.Second}, // Capped at max delay
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("attempt_%d", tc.attempt), func(t *testing.T) {
-			err := NewAPIError("test error", errors.New("test"))
+			// Use an error without RetryAfter set so exponential backoff is tested
+			err := &AgentCommunicationError{
+				Type:      ErrorTypeAPI,
+				Message:   "test error",
+				Retryable: true,
+			}
 			delay := retryer.calculateDelay(tc.attempt, err)
 			assert.Equal(t, tc.expectedDelay, delay)
 		})
@@ -251,12 +256,12 @@ func TestBackoffCalculation(t *testing.T) {
 func TestErrorSpecificRetryAfter(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	retryer := NewRetryer(DefaultRetryPolicy(), logger)
-	
+
 	// Test that error-specific retry after takes precedence
 	customRetryAfter := 5 * time.Second
 	err := NewRateLimitError("rate limited", customRetryAfter)
 	delay := retryer.calculateDelay(1, err)
-	
+
 	// Should use error-specific retry after (with potential jitter)
 	assert.True(t, delay >= time.Duration(float64(customRetryAfter)*0.9)) // Account for negative jitter
 	assert.True(t, delay <= time.Duration(float64(customRetryAfter)*1.1)) // Account for positive jitter
@@ -265,11 +270,11 @@ func TestErrorSpecificRetryAfter(t *testing.T) {
 func TestShouldRetry(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	retryer := NewRetryer(DefaultRetryPolicy(), logger)
-	
+
 	tests := []struct {
-		name          string
-		err           *AgentCommunicationError
-		shouldRetry   bool
+		name        string
+		err         *AgentCommunicationError
+		shouldRetry bool
 	}{
 		{
 			name:        "network error",
@@ -292,7 +297,7 @@ func TestShouldRetry(t *testing.T) {
 			shouldRetry: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := retryer.shouldRetry(tt.err)

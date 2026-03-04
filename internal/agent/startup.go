@@ -12,20 +12,20 @@ import (
 // StartupValidator handles agent initialization validation and recovery.
 type StartupValidator struct {
 	deps      Dependencies
-	validator *state.StateValidator
+	validator state.Validator
 	logger    *slog.Logger
 }
 
 // StartupValidationReport contains the results of startup validation.
 type StartupValidationReport struct {
-	Valid                bool                        `json:"valid"`
-	OrphanedWorkFound    []*state.OrphanedWorkItem   `json:"orphaned_work_found"`
-	RecoveryActions      []*RecoveryAction           `json:"recovery_actions"`
-	ValidationIssues     []*state.ValidationIssue    `json:"validation_issues"`
-	RecommendedActions   []*state.RecommendedAction  `json:"recommended_actions"`
-	StartupSafe          bool                        `json:"startup_safe"`
-	ValidationDuration   time.Duration               `json:"validation_duration"`
-	ValidatedAt          time.Time                   `json:"validated_at"`
+	Valid              bool                       `json:"valid"`
+	OrphanedWorkFound  []*state.OrphanedWorkItem  `json:"orphaned_work_found"`
+	RecoveryActions    []*RecoveryAction          `json:"recovery_actions"`
+	ValidationIssues   []*state.ValidationIssue   `json:"validation_issues"`
+	RecommendedActions []*state.RecommendedAction `json:"recommended_actions"`
+	StartupSafe        bool                       `json:"startup_safe"`
+	ValidationDuration time.Duration              `json:"validation_duration"`
+	ValidatedAt        time.Time                  `json:"validated_at"`
 }
 
 // RecoveryAction represents an action taken during startup recovery.
@@ -44,15 +44,15 @@ type RecoveryAction struct {
 type RecoveryActionType string
 
 const (
-	ActionCleanupOrphaned    RecoveryActionType = "cleanup_orphaned"
-	ActionResumeWork         RecoveryActionType = "resume_work"
-	ActionValidateState      RecoveryActionType = "validate_state"
-	ActionReconcileDrift     RecoveryActionType = "reconcile_drift"
-	ActionFlagForManual      RecoveryActionType = "flag_for_manual"
+	ActionCleanupOrphaned RecoveryActionType = "cleanup_orphaned"
+	ActionResumeWork      RecoveryActionType = "resume_work"
+	ActionValidateState   RecoveryActionType = "validate_state"
+	ActionReconcileDrift  RecoveryActionType = "reconcile_drift"
+	ActionFlagForManual   RecoveryActionType = "flag_for_manual"
 )
 
 // NewStartupValidator creates a new startup validator.
-func NewStartupValidator(deps Dependencies, validator *state.StateValidator) *StartupValidator {
+func NewStartupValidator(deps Dependencies, validator state.Validator) *StartupValidator {
 	return &StartupValidator{
 		deps:      deps,
 		validator: validator,
@@ -63,7 +63,7 @@ func NewStartupValidator(deps Dependencies, validator *state.StateValidator) *St
 // ValidateAndRecoverStartup performs comprehensive startup validation and recovery.
 func (s *StartupValidator) ValidateAndRecoverStartup(ctx context.Context, agentType AgentType) (*StartupValidationReport, error) {
 	start := time.Now()
-	
+
 	s.logger.Info("starting startup validation and recovery", "agent_type", agentType)
 
 	report := &StartupValidationReport{
@@ -137,7 +137,7 @@ func (s *StartupValidator) PerformPeriodicValidation(ctx context.Context) error 
 		if agentState.State != state.StateIdle && agentState.State != state.StateComplete && agentState.State != state.StateFailed {
 			validationReport, err := s.validator.ValidateWorkState(ctx, agentState)
 			if err != nil {
-				s.logger.Error("periodic validation failed for agent", 
+				s.logger.Error("periodic validation failed for agent",
 					"agent_type", agentState.AgentType,
 					"issue_number", agentState.IssueNumber,
 					"error", err)
@@ -226,7 +226,7 @@ func (s *StartupValidator) detectOrphanedWork(ctx context.Context, report *Start
 	if len(orphanedItems) > 0 {
 		report.Valid = false
 		s.logger.Warn("orphaned work detected", "count", len(orphanedItems))
-		
+
 		for _, orphan := range orphanedItems {
 			s.logger.Info("orphaned work details",
 				"agent_type", orphan.AgentType,
@@ -268,22 +268,22 @@ func (s *StartupValidator) performStartupRecovery(ctx context.Context, report *S
 		case state.RecoveryTypeCleanup:
 			action.Type = ActionCleanupOrphaned
 			action.Description = fmt.Sprintf("Cleanup orphaned work for issue #%d", orphan.IssueNumber)
-			
+
 			err := recoveryManager.CleanupOrphanedWork(ctx, orphan)
 			action.Success = err == nil
 			if err != nil {
 				action.Error = err.Error()
-				s.logger.Error("failed to cleanup orphaned work", 
+				s.logger.Error("failed to cleanup orphaned work",
 					"issue_number", orphan.IssueNumber, "error", err)
 			} else {
-				s.logger.Info("successfully cleaned up orphaned work", 
+				s.logger.Info("successfully cleaned up orphaned work",
 					"issue_number", orphan.IssueNumber)
 			}
 
 		case state.RecoveryTypeResume:
 			action.Type = ActionResumeWork
 			action.Description = fmt.Sprintf("Attempt to resume work for issue #%d", orphan.IssueNumber)
-			
+
 			// For now, just flag as requiring manual intervention during startup
 			// Actual resumption would happen during normal agent operation
 			s.logger.Info("orphaned work flagged for resumption",
@@ -293,7 +293,7 @@ func (s *StartupValidator) performStartupRecovery(ctx context.Context, report *S
 		case state.RecoveryTypeManual:
 			action.Type = ActionFlagForManual
 			action.Description = fmt.Sprintf("Flag issue #%d for manual intervention", orphan.IssueNumber)
-			
+
 			// This would need proper implementation
 			s.logger.Info("orphaned work flagged for manual intervention",
 				"issue_number", orphan.IssueNumber)

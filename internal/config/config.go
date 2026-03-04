@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -344,6 +345,35 @@ type ConsistencyConfig struct {
 	ValidateOnStartup    bool `mapstructure:"validate_on_startup"`
 	ValidatePeriodically bool `mapstructure:"validate_periodically"`
 	ReconcileDrift       bool `mapstructure:"reconcile_drift"`
+}
+
+// GetRepoPath returns the owner/repo path for organizing files by repository.
+// Returns empty string if GitHub configuration is incomplete.
+func (c *Config) GetRepoPath() string {
+	if c.GitHub.Owner == "" || c.GitHub.Repo == "" {
+		return ""
+	}
+	return filepath.Join(c.GitHub.Owner, c.GitHub.Repo)
+}
+
+// GetLogPath returns the log directory path for the configured repository.
+// Falls back to the base log directory if GitHub configuration is incomplete.
+func (c *Config) GetLogPath(baseLogDir string) string {
+	repoPath := c.GetRepoPath()
+	if repoPath == "" {
+		return baseLogDir
+	}
+	return filepath.Join(baseLogDir, repoPath)
+}
+
+// GetWorkspacePath returns the workspace directory path for the configured repository.
+// Falls back to the base workspace directory if GitHub configuration is incomplete.
+func (c *Config) GetWorkspacePath(baseWorkspaceDir string) string {
+	repoPath := c.GetRepoPath()
+	if repoPath == "" {
+		return baseWorkspaceDir
+	}
+	return filepath.Join(baseWorkspaceDir, repoPath)
 }
 
 // Load reads configuration from the given file path, expanding environment variables.

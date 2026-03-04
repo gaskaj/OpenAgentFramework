@@ -15,7 +15,7 @@ import (
 // RecoveryManager handles workflow recovery and cleanup operations.
 type RecoveryManager struct {
 	deps      agent.Dependencies
-	validator *state.StateValidator
+	validator state.Validator
 	logger    *slog.Logger
 }
 
@@ -52,25 +52,25 @@ const (
 type RecommendedResumption string
 
 const (
-	RecommendResume   RecommendedResumption = "resume"
-	RecommendRestart  RecommendedResumption = "restart"
-	RecommendCleanup  RecommendedResumption = "cleanup"
-	RecommendManual   RecommendedResumption = "manual"
+	RecommendResume  RecommendedResumption = "resume"
+	RecommendRestart RecommendedResumption = "restart"
+	RecommendCleanup RecommendedResumption = "cleanup"
+	RecommendManual  RecommendedResumption = "manual"
 )
 
 type CleanupActionType string
 
 const (
-	CleanupWorkspace   CleanupActionType = "cleanup_workspace"
-	CleanupBranch      CleanupActionType = "cleanup_branch"
-	CleanupPR          CleanupActionType = "cleanup_pr"
-	CleanupLabels      CleanupActionType = "cleanup_labels"
-	CleanupCheckpoint  CleanupActionType = "cleanup_checkpoint"
-	CleanupState       CleanupActionType = "cleanup_state"
+	CleanupWorkspace  CleanupActionType = "cleanup_workspace"
+	CleanupBranch     CleanupActionType = "cleanup_branch"
+	CleanupPR         CleanupActionType = "cleanup_pr"
+	CleanupLabels     CleanupActionType = "cleanup_labels"
+	CleanupCheckpoint CleanupActionType = "cleanup_checkpoint"
+	CleanupState      CleanupActionType = "cleanup_state"
 )
 
 // NewRecoveryManager creates a new recovery manager.
-func NewRecoveryManager(deps agent.Dependencies, validator *state.StateValidator) *RecoveryManager {
+func NewRecoveryManager(deps agent.Dependencies, validator state.Validator) *RecoveryManager {
 	return &RecoveryManager{
 		deps:      deps,
 		validator: validator,
@@ -80,7 +80,7 @@ func NewRecoveryManager(deps agent.Dependencies, validator *state.StateValidator
 
 // AttemptResume analyzes a work state and creates a resumption plan.
 func (r *RecoveryManager) AttemptResume(ctx context.Context, workState *state.AgentWorkState) (*ResumptionPlan, error) {
-	r.logger.Info("analyzing resumption possibilities", 
+	r.logger.Info("analyzing resumption possibilities",
 		"agent_type", workState.AgentType,
 		"issue_number", workState.IssueNumber,
 		"current_state", workState.State,
@@ -165,7 +165,7 @@ func (r *RecoveryManager) CleanupOrphanedWork(ctx context.Context, orphaned *sta
 		r.logger.Info("work item eligible for resumption, skipping cleanup")
 		return nil
 	case state.RecoveryTypeManual:
-		r.logger.Info("orphaned work requires manual intervention", 
+		r.logger.Info("orphaned work requires manual intervention",
 			"issue_number", orphaned.IssueNumber)
 		return r.flagForManualIntervention(ctx, workState)
 	}
@@ -179,7 +179,7 @@ func (r *RecoveryManager) ValidateWorkspaceConsistency(ctx context.Context, work
 		return nil // No workspace to validate
 	}
 
-	r.logger.Debug("validating workspace consistency", 
+	r.logger.Debug("validating workspace consistency",
 		"workspace_dir", workspaceDir,
 		"issue_number", issueNum)
 
@@ -354,7 +354,7 @@ func (r *RecoveryManager) estimateResumptionDuration(workState *state.AgentWorkS
 		state.StateClaim:      5 * time.Minute,
 		state.StateAnalyze:    10 * time.Minute,
 		state.StateWorkspace:  5 * time.Minute,
-		state.StateImplement: 30 * time.Minute,
+		state.StateImplement:  30 * time.Minute,
 		state.StateCommit:     5 * time.Minute,
 		state.StatePR:         10 * time.Minute,
 		state.StateValidation: 15 * time.Minute,
@@ -458,7 +458,7 @@ func (r *RecoveryManager) makeResumptionRecommendation(workState *state.AgentWor
 
 // performFullCleanup performs full cleanup of orphaned work.
 func (r *RecoveryManager) performFullCleanup(ctx context.Context, workState *state.AgentWorkState) error {
-	r.logger.Info("performing full cleanup", 
+	r.logger.Info("performing full cleanup",
 		"agent_type", workState.AgentType,
 		"issue_number", workState.IssueNumber)
 
@@ -505,13 +505,13 @@ func (r *RecoveryManager) flagForManualIntervention(ctx context.Context, workSta
 		"issue_number", workState.IssueNumber)
 
 	// Add a comment to the issue explaining the situation
-	comment := fmt.Sprintf("🚨 **Manual Intervention Required**\n\n" +
-		"This issue has been flagged for manual review due to inconsistent agent state.\n\n" +
-		"**Details:**\n" +
-		"- Agent Type: %s\n" +
-		"- Current State: %s\n" +
-		"- Last Update: %s\n" +
-		"- Age: %.1f hours\n\n" +
+	comment := fmt.Sprintf("🚨 **Manual Intervention Required**\n\n"+
+		"This issue has been flagged for manual review due to inconsistent agent state.\n\n"+
+		"**Details:**\n"+
+		"- Agent Type: %s\n"+
+		"- Current State: %s\n"+
+		"- Last Update: %s\n"+
+		"- Age: %.1f hours\n\n"+
 		"Please review the issue state and take appropriate action.",
 		workState.AgentType,
 		workState.State,

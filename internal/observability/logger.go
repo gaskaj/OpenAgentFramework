@@ -29,6 +29,11 @@ type StructuredLogger struct {
 
 // NewStructuredLogger creates a new structured logger with the given configuration
 func NewStructuredLogger(cfg config.LoggingConfig) *StructuredLogger {
+	return NewStructuredLoggerWithConfig(cfg, nil)
+}
+
+// NewStructuredLoggerWithConfig creates a new structured logger with the given configuration and config context
+func NewStructuredLoggerWithConfig(cfg config.LoggingConfig, appConfig *config.Config) *StructuredLogger {
 	var level slog.Level
 	switch cfg.Level {
 	case "debug":
@@ -72,10 +77,22 @@ func NewStructuredLogger(cfg config.LoggingConfig) *StructuredLogger {
 
 	// Setup file-based logging if file path is specified
 	if cfg.FilePath != "" {
+		var logFilePath string
+		
+		// Use repo-specific path if config is provided
+		if appConfig != nil {
+			baseLogDir := filepath.Dir(cfg.FilePath)
+			fileName := filepath.Base(cfg.FilePath)
+			repoLogDir := appConfig.GetLogPath(baseLogDir)
+			logFilePath = filepath.Join(repoLogDir, fileName)
+		} else {
+			logFilePath = cfg.FilePath
+		}
+		
 		// Create log directory if it doesn't exist
-		logDir := filepath.Dir(cfg.FilePath)
+		logDir := filepath.Dir(logFilePath)
 		if err := os.MkdirAll(logDir, 0755); err == nil {
-			if file, err := os.OpenFile(cfg.FilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644); err == nil {
+			if file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644); err == nil {
 				writer = file
 			}
 		}
