@@ -17,6 +17,7 @@ import (
 	"github.com/gaskaj/OpenAgentFramework/internal/observability"
 	"github.com/gaskaj/OpenAgentFramework/internal/state"
 	"github.com/gaskaj/OpenAgentFramework/internal/workspace"
+	"github.com/gaskaj/OpenAgentFramework/pkg/apitypes"
 	"github.com/google/go-github/v68/github"
 )
 
@@ -69,6 +70,15 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 	if err := d.claimIssue(ctx, issueNum); err != nil {
 		return fmt.Errorf("claiming issue: %w", err)
 	}
+
+	d.reportEvent(ctx, apitypes.AgentEvent{
+		EventType:     apitypes.EventIssueClaimed,
+		Severity:      apitypes.SeverityInfo,
+		IssueNumber:   issueNum,
+		WorkflowState: "claim",
+		Payload:       map[string]any{"title": issueTitle},
+		Timestamp:     time.Now(),
+	})
 
 	// Save state
 	ws := &state.AgentWorkState{
@@ -222,6 +232,15 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 		})
 	}
 
+	d.reportEvent(ctx, apitypes.AgentEvent{
+		EventType:     apitypes.EventIssueAnalyzed,
+		Severity:      apitypes.SeverityInfo,
+		IssueNumber:   issueNum,
+		WorkflowState: "analyze",
+		Payload:       map[string]any{"too_complex": tooComplex, "analysis_time_ms": analysisTime.Milliseconds()},
+		Timestamp:     time.Now(),
+	})
+
 	// Post analysis plan as a comment on the issue.
 	analysisComment := fmt.Sprintf("🤖 **Analysis complete**\n\n%s", plan)
 	if d.Deps.Config.Decomposition.Enabled {
@@ -255,6 +274,15 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 		ws.State = state.StateDecompose
 		ws.UpdatedAt = time.Now()
 		_ = d.Deps.Store.Save(ctx, ws)
+
+		d.reportEvent(ctx, apitypes.AgentEvent{
+			EventType:     apitypes.EventIssueDecomposed,
+			Severity:      apitypes.SeverityInfo,
+			IssueNumber:   issueNum,
+			WorkflowState: "decompose",
+			Payload:       map[string]any{"child_issues": childNums, "trigger": "proactive"},
+			Timestamp:     time.Now(),
+		})
 
 		// Log handoff to child issues
 		if d.Deps.StructuredLogger != nil {
@@ -401,6 +429,16 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 	ws.UpdatedAt = time.Now()
 	_ = d.Deps.Store.Save(ctx, ws)
 
+	d.reportEvent(ctx, apitypes.AgentEvent{
+		EventType:     apitypes.EventPRCreated,
+		Severity:      apitypes.SeverityInfo,
+		IssueNumber:   issueNum,
+		PRNumber:      pr.GetNumber(),
+		WorkflowState: "pr",
+		Payload:       map[string]any{"branch": branchName},
+		Timestamp:     time.Now(),
+	})
+
 	// Step 7: Validate PR checks
 	ctx = observability.WithWorkflowStage(ctx, observability.WorkflowStage("validate"))
 	d.updateStatus(state.StateValidation, issueNum, "validating PR checks")
@@ -434,6 +472,15 @@ func (d *DeveloperAgent) processIssue(ctx context.Context, issue *github.Issue) 
 	ws.State = state.StateComplete
 	ws.UpdatedAt = time.Now()
 	_ = d.Deps.Store.Save(ctx, ws)
+
+	d.reportEvent(ctx, apitypes.AgentEvent{
+		EventType:     apitypes.EventIssueCompleted,
+		Severity:      apitypes.SeverityInfo,
+		IssueNumber:   issueNum,
+		PRNumber:      pr.GetNumber(),
+		WorkflowState: "complete",
+		Timestamp:     time.Now(),
+	})
 
 	d.updateStatus(state.StateIdle, 0, "waiting for issues")
 
@@ -825,6 +872,15 @@ func (d *DeveloperAgent) failIssue(ctx context.Context, ws *state.AgentWorkState
 	ws.Error = err.Error()
 	ws.UpdatedAt = time.Now()
 	_ = d.Deps.Store.Save(ctx, ws)
+
+	d.reportEvent(ctx, apitypes.AgentEvent{
+		EventType:     apitypes.EventIssueFailed,
+		Severity:      apitypes.SeverityError,
+		IssueNumber:   ws.IssueNumber,
+		WorkflowState: "failed",
+		Payload:       map[string]any{"error": err.Error()},
+		Timestamp:     time.Now(),
+	})
 
 	_ = d.Deps.GitHub.CreateComment(ctx, ws.IssueNumber,
 		fmt.Sprintf("🤖 Developer agent failed: %v", err))

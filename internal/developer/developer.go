@@ -12,6 +12,7 @@ import (
 	"github.com/gaskaj/OpenAgentFramework/internal/observability"
 	"github.com/gaskaj/OpenAgentFramework/internal/state"
 	"github.com/gaskaj/OpenAgentFramework/internal/workspace"
+	"github.com/gaskaj/OpenAgentFramework/pkg/apitypes"
 )
 
 // DeveloperAgent monitors GitHub for issues and implements solutions.
@@ -114,6 +115,13 @@ func New(deps agent.Dependencies) (agent.Agent, error) {
 		da.poller.IdleHandler = func(ctx context.Context) error {
 			da.updateStatus(state.StateCreativeThink, 0, "generating improvement suggestions")
 			defer da.updateStatus(state.StateIdle, 0, "waiting for issues")
+			da.reportEvent(ctx, apitypes.AgentEvent{
+				EventType:     apitypes.EventSuggestionCreated,
+				Severity:      apitypes.SeverityInfo,
+				WorkflowState: "creative_thinking",
+				Payload:       map[string]any{"action": "creativity_cycle_started"},
+				Timestamp:     time.Now(),
+			})
 			return engine.Run(ctx)
 		}
 	}
@@ -375,4 +383,12 @@ func (d *DeveloperAgent) updateStatus(s state.WorkflowState, issueID int, msg st
 
 func (d *DeveloperAgent) logger() *slog.Logger {
 	return d.Deps.Logger.With("agent", "developer")
+}
+
+// reportEvent sends an event to the control plane if the reporter is configured.
+func (d *DeveloperAgent) reportEvent(ctx context.Context, event apitypes.AgentEvent) {
+	if d.Deps.Reporter == nil {
+		return
+	}
+	_ = d.Deps.Reporter.Report(ctx, event)
 }
