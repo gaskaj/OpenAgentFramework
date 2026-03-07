@@ -11,11 +11,12 @@ import (
 
 // ServerConfig holds all configuration for the control plane server.
 type ServerConfig struct {
-	Server   HTTPConfig     `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Auth     AuthConfig     `mapstructure:"auth"`
-	CORS     CORSConfig     `mapstructure:"cors"`
-	Logging  LogConfig      `mapstructure:"logging"`
+	Server     HTTPConfig     `mapstructure:"server"`
+	Database   DatabaseConfig `mapstructure:"database"`
+	Auth       AuthConfig     `mapstructure:"auth"`
+	CORS       CORSConfig     `mapstructure:"cors"`
+	Logging    LogConfig      `mapstructure:"logging"`
+	Versioning VersionConfig  `mapstructure:"versioning"`
 }
 
 // HTTPConfig holds HTTP server settings.
@@ -81,6 +82,22 @@ type LogConfig struct {
 	Format string `mapstructure:"format"`
 }
 
+// VersionConfig holds API versioning settings.
+type VersionConfig struct {
+	DefaultVersion     string       `mapstructure:"default_version"`
+	DeprecationWarning bool         `mapstructure:"deprecation_warning"`
+	SupportedVersions  []APIVersion `mapstructure:"supported_versions"`
+}
+
+// APIVersion represents a supported API version.
+type APIVersion struct {
+	Version      string     `mapstructure:"version"`
+	IsDefault    bool       `mapstructure:"is_default"`
+	IsDeprecated bool       `mapstructure:"is_deprecated"`
+	DeprecatedAt *time.Time `mapstructure:"deprecated_at"`
+	SunsetAt     *time.Time `mapstructure:"sunset_at"`
+}
+
 // Load reads the server configuration from a YAML file.
 func Load(path string) (*ServerConfig, error) {
 	v := viper.New()
@@ -144,6 +161,17 @@ func Load(path string) (*ServerConfig, error) {
 	}
 	if cfg.Logging.Level == "" {
 		cfg.Logging.Level = "info"
+	}
+	if cfg.Versioning.DefaultVersion == "" {
+		cfg.Versioning.DefaultVersion = "v1"
+	}
+	if len(cfg.Versioning.SupportedVersions) == 0 {
+		cfg.Versioning.SupportedVersions = []APIVersion{
+			{
+				Version:   "v1",
+				IsDefault: true,
+			},
+		}
 	}
 
 	return &cfg, nil

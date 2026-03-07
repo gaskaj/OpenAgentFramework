@@ -43,3 +43,11 @@ cors:
 logging:
   level: "info"
   format: "json"
+
+versioning:
+  default_version: "v1"
+  deprecation_warning: true
+  supported_versions:
+    - version: "v1"
+      is_default: true
+      is_deprecated: false
