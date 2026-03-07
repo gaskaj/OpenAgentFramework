@@ -5,18 +5,28 @@ OpenAgentFramework is an autonomous Go agent that monitors GitHub issues, uses C
 ## Quick Reference
 
 ```bash
+# Agent CLI
 make build                    # Build → bin/agentctl
 make test                     # Run tests with -race
 make lint                     # golangci-lint + go vet
 make fmt                      # gofmt -s -w .
 agentctl start --config configs/config.yaml
 agentctl status --config configs/config.yaml
+
+# Control Plane + WebUI
+make build-controlplane       # Build → bin/controlplane
+docker compose up             # Start full stack (postgres + controlplane + frontend)
+
+# Frontend Testing
+cd frontend && npm test       # Run Vitest unit/component tests
+cd frontend && npm run test:e2e  # Run Playwright e2e tests (requires running stack)
 ```
 
 ## Repository Layout
 
 ```
 cmd/agentctl/                 CLI entry point (main.go → cli.Execute())
+cmd/controlplane/             Control plane server entry point
 internal/
   agent/                      Agent interface, BaseAgent, Dependencies DI, registry
   orchestrator/               Concurrent agent execution (errgroup)
@@ -31,7 +41,26 @@ internal/
   errors/                     Retry with backoff, circuit breakers, error classification
   observability/              Structured logger, correlation IDs, metrics
   cli/                        Cobra commands (start, status)
-configs/                      YAML config files (config.yaml, config.example.yaml)
+web/                          Control plane backend (Go + chi + pgx)
+  handler/                    HTTP handlers (auth, agents, events, orgs, API keys, audit)
+  store/                      PostgreSQL stores (pgx) for all entities
+  auth/                       JWT, bcrypt, OAuth providers
+  middleware/                 Auth, API key, logging middleware
+  router/                     Chi router with full route tree
+  ws/                         WebSocket hub for real-time event streaming
+  config/                     Server config (Viper)
+  migrate/                    SQL migrations (embedded)
+pkg/
+  apitypes/                   Shared event types between agents and control plane
+  reporter/                   Buffered HTTP reporter client for agents
+frontend/                     React + TypeScript + Vite control plane UI
+  src/pages/                  Page components (Dashboard, Agents, Events, Settings, etc.)
+  src/store/                  Zustand state stores (auth, agent, event)
+  src/hooks/                  React hooks (useAuth, useAgents, useEvents, useWebSocket)
+  src/api/                    Axios API clients
+  src/components/             Reusable UI components
+  e2e/                        Playwright e2e tests
+configs/                      YAML config files (config.yaml, config.example.yaml, controlplane.example.yaml)
 docs/                         Detailed documentation (see links below)
 ```
 
@@ -118,8 +147,44 @@ Key sections: `github`, `claude`, `agents`, `state`, `logging`, `creativity`, `d
 - [docs/package-reference.md](docs/package-reference.md) — Per-package API catalog
 - [docs/structured-logging.md](docs/structured-logging.md) — Observability, correlation IDs, metrics
 - [docs/integration-testing.md](docs/integration-testing.md) — Integration test suite, mock infrastructure, CI pipeline
+- [docs/webui-architecture.md](docs/webui-architecture.md) — Control plane WebUI architecture, multi-tenant design
+- [docs/webui-api-reference.md](docs/webui-api-reference.md) — REST API endpoints for the control plane
+- [docs/webui-deployment.md](docs/webui-deployment.md) — Docker Compose deployment, configuration
 
-## Documentation Instructions 
+## WebUI Testing Requirements
+
+**MANDATORY**: Any change to frontend code, backend API handlers, or shared types (`pkg/apitypes`) MUST pass all existing frontend tests before being committed. This applies to both human and agent-authored changes.
+
+### Running Tests
+
+```bash
+cd frontend
+npm test              # Vitest unit/component tests (runs during `npm run build`)
+npm run test:e2e      # Playwright e2e tests (requires docker compose up)
+```
+
+### Test Structure
+
+- **Unit tests** (`src/**/*.test.{ts,tsx}`): Vitest + React Testing Library. Test stores, hooks, components, and utilities. These run as part of `npm run build`.
+- **E2e tests** (`e2e/*.spec.ts`): Playwright. Test full user flows including signup, login, and dashboard rendering. Run against the full stack.
+
+### Test Email Format
+
+E2e tests use generated emails in the format:
+`WebTesting-YYYYMMDD-HHMMSSUTC-GUID@OpenAgentFramework.com`
+
+Helper: `frontend/src/test/helpers.ts` → `generateTestEmail()`
+
+### Adding New Tests
+
+When modifying UI components or API endpoints:
+1. Add or update Vitest tests for affected components/stores
+2. Run `cd frontend && npm test` to verify all tests pass
+3. If the change affects user-facing flows (auth, navigation, data display), add or update Playwright e2e tests
+4. Run `go build ./...` to verify backend compiles
+5. Run `go test ./pkg/... ./internal/...` to verify Go tests pass
+
+## Documentation Instructions
 
 - All new features must be documented in the ./docs folder
 - Documentation is to give the LLM and a Human context what the code is doing

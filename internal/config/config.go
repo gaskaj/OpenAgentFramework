@@ -25,6 +25,16 @@ type Config struct {
 	ErrorHandling ErrorHandlingConfig `mapstructure:"error_handling"`
 	Shutdown      ShutdownConfig      `mapstructure:"shutdown"`
 	Workspace     WorkspaceConfig     `mapstructure:"workspace"`
+	ControlPlane  ControlPlaneConfig  `mapstructure:"controlplane"`
+}
+
+// ControlPlaneConfig holds configuration for reporting to the WebUI control plane.
+type ControlPlaneConfig struct {
+	Enabled           bool          `mapstructure:"enabled"`
+	URL               string        `mapstructure:"url"`
+	APIKey            string        `mapstructure:"api_key"`
+	AgentName         string        `mapstructure:"agent_name"`
+	HeartbeatInterval time.Duration `mapstructure:"heartbeat_interval"`
 }
 
 // GitHubConfig holds GitHub-related configuration.

@@ -39,3 +39,16 @@ Thumbs.db
 # Logs
 Logs/
 *.log
+
+# Node / Frontend
+node_modules/
+dist/
+.eslintcache
+*.tsbuildinfo
+
+# Playwright
+test-results/
+playwright-report/
+
+# Docker
+controlplane

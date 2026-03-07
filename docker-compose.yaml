@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: oaf_controlplane
+      POSTGRES_USER: oaf
+      POSTGRES_PASSWORD: oaf_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oaf -d oaf_controlplane"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  controlplane:
+    build:
+      context: .
+      dockerfile: Dockerfile.controlplane
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres
+      DB_USER: oaf
+      DB_PASSWORD: oaf_dev_password
+      JWT_SECRET: dev-jwt-secret-change-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./configs/controlplane.example.yaml:/app/config.yaml:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - controlplane
+
+volumes:
+  pgdata:

@@ -18,6 +18,7 @@ import (
 	"github.com/gaskaj/OpenAgentFramework/internal/observability"
 	"github.com/gaskaj/OpenAgentFramework/internal/orchestrator"
 	"github.com/gaskaj/OpenAgentFramework/internal/state"
+	"github.com/gaskaj/OpenAgentFramework/pkg/reporter"
 	"github.com/spf13/cobra"
 )
 
@@ -78,6 +79,28 @@ func runStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("creating state store: %w", err)
 	}
 
+	// Initialize control plane reporter if configured
+	var rptr *reporter.Reporter
+	if cfg.ControlPlane.Enabled {
+		hostname, _ := os.Hostname()
+		rptr, err = reporter.New(reporter.Config{
+			ControlPlaneURL: cfg.ControlPlane.URL,
+			APIKey:          cfg.ControlPlane.APIKey,
+			AgentName:       cfg.ControlPlane.AgentName,
+			AgentType:       "developer",
+			Version:         "0.1.0",
+			Hostname:        hostname,
+			GitHubOwner:     cfg.GitHub.Owner,
+			GitHubRepo:      cfg.GitHub.Repo,
+			FlushInterval:   5 * time.Second,
+		})
+		if err != nil {
+			logger.Warn("failed to initialize control plane reporter, continuing without it", "error", err)
+		} else {
+			logger.Info("control plane reporter initialized", "url", cfg.ControlPlane.URL, "agent", cfg.ControlPlane.AgentName)
+		}
+	}
+
 	deps := agent.Dependencies{
 		Config:           cfg,
 		GitHub:           ghClient,
@@ -87,6 +110,7 @@ func runStart(cmd *cobra.Command, args []string) error {
 		StructuredLogger: structuredLogger,
 		Metrics:          metrics,
 		ErrorManager:     errorManager,
+		Reporter:         rptr,
 	}
 
 	// Create enabled agents.
@@ -107,6 +131,11 @@ func runStart(cmd *cobra.Command, args []string) error {
 	// Setup signal handling with graceful shutdown.
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
+
+	// Start control plane heartbeat now that we have a context
+	if rptr != nil && cfg.ControlPlane.HeartbeatInterval > 0 {
+		rptr.Heartbeat(ctx, cfg.ControlPlane.HeartbeatInterval)
+	}
 
 	// Initialize recovery manager to handle interrupted workflows
 	recoveryManager := state.NewRecoveryManager(store, ghClient, cfg, logger).
@@ -175,6 +204,13 @@ func runStart(cmd *cobra.Command, args []string) error {
 			// Orchestrator finished
 		case <-time.After(5 * time.Second):
 			logger.Warn("orchestrator did not finish within timeout")
+		}
+	}
+
+	// Shutdown control plane reporter
+	if rptr != nil {
+		if err := rptr.Close(); err != nil {
+			logger.Error("failed to close control plane reporter", "error", err)
 		}
 	}
 
