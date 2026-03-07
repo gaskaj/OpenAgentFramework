@@ -30,6 +30,13 @@ github:
   watch_labels:
     - "agent:ready"
 
+controlplane:
+    enabled: true
+    url: "http://localhost:8080"
+    api_key: "oaf_f0d78f01d79736d916c7faceced40e92b7467d469c5484e1327edc3b70e3181d"
+    agent_name: "developer-1"
+    heartbeat_interval: 30s
+
 claude:
   # Anthropic API key
   # Get from: https://console.anthropic.com/

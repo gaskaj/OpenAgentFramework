@@ -10,6 +10,7 @@ import (
 	"github.com/gaskaj/OpenAgentFramework/internal/ghub"
 	"github.com/gaskaj/OpenAgentFramework/internal/observability"
 	"github.com/gaskaj/OpenAgentFramework/internal/state"
+	"github.com/gaskaj/OpenAgentFramework/pkg/reporter"
 )
 
 // AgentType identifies the kind of agent.
@@ -60,6 +61,7 @@ type Dependencies struct {
 	StructuredLogger *observability.StructuredLogger
 	Metrics          *observability.Metrics
 	ErrorManager     *errors.Manager
+	Reporter         *reporter.Reporter // optional, nil when control plane is disabled
 }
 
 // BaseAgent provides common functionality for all agents.

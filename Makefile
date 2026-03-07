@@ -1,4 +1,4 @@
-.PHONY: build test test-unit test-integration test-all test-cover test-race lint run clean fmt vet docker-test docker-test-performance docker-test-race coverage coverage-unit coverage-integration coverage-report coverage-badge coverage-analyze coverage-gates
+.PHONY: build build-controlplane test test-unit test-integration test-all test-cover test-race lint run clean fmt vet docker-test docker-test-performance docker-test-race coverage coverage-unit coverage-integration coverage-report coverage-badge coverage-analyze coverage-gates
 
 BINARY := agentctl
 PKG := ./...
@@ -6,6 +6,11 @@ INTEGRATION_PKG := ./internal/integration/...
 
 build:
 	go build -o bin/$(BINARY) ./cmd/agentctl
+
+build-controlplane:
+	go build -o bin/controlplane ./cmd/controlplane
+
+build-all: build build-controlplane
 
 # Unit tests (short, no integration tests)
 test-unit:
@@ -78,6 +83,12 @@ fmt:
 
 run: build
 	./bin/$(BINARY) start --config configs/config.example.yaml
+
+run-controlplane: build-controlplane
+	./bin/controlplane --config configs/controlplane.example.yaml
+
+run-frontend:
+	cd frontend && npm run dev
 
 clean:
 	rm -rf bin/ coverage.out coverage.html integration-coverage.out integration-coverage.html
