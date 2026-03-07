@@ -1,11 +1,13 @@
 import axios, { AxiosError } from 'axios';
 import type { ApiError } from '@/types';
 import { useAuthStore } from '@/store/auth-store';
+import { CURRENT_API_VERSION, createVersionHeaders, parseVersionResponse, VersionResponse } from './versions';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   headers: {
     'Content-Type': 'application/json',
+    ...createVersionHeaders(CURRENT_API_VERSION),
   },
 });
 
@@ -20,7 +22,21 @@ apiClient.interceptors.request.use((config) => {
 
 // Handle 401 responses: attempt token refresh or redirect to login
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Parse version information from response headers
+    const versionInfo: VersionResponse = parseVersionResponse(response.headers);
+    
+    // Log deprecation warnings
+    if (versionInfo.isDeprecated) {
+      console.warn(
+        `API version ${versionInfo.version} is deprecated.`,
+        versionInfo.sunsetDate ? `Sunset date: ${versionInfo.sunsetDate}` : '',
+        versionInfo.migrationGuide ? `Migration guide: ${versionInfo.migrationGuide}` : '',
+      );
+    }
+    
+    return response;
+  },
   async (error: AxiosError<ApiError>) => {
     const originalRequest = error.config;
 
@@ -33,6 +49,7 @@ apiClient.interceptors.response.use(
           const { data } = await axios.post(
             `${apiClient.defaults.baseURL}/auth/refresh`,
             { refresh_token: refreshToken },
+            { headers: createVersionHeaders(CURRENT_API_VERSION) },
           );
           useAuthStore.getState().setToken(data.access_token, data.refresh_token);
           originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
@@ -46,6 +63,17 @@ apiClient.interceptors.response.use(
 
       useAuthStore.getState().logout();
       window.location.href = '/login';
+    }
+
+    // Handle API versioning errors specifically
+    if (error.response?.status === 400 && error.response.data?.error === 'unsupported_api_version') {
+      console.error('Unsupported API version:', error.response.data);
+      // Could potentially retry with a different version or show user-friendly error
+    }
+    
+    if (error.response?.status === 410 && error.response.data?.error === 'api_version_sunset') {
+      console.error('API version sunset:', error.response.data);
+      // Should prompt user to update their client
     }
 
     // Normalize error

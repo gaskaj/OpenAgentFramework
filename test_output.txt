@@ -1,0 +1,28 @@
+?   	github.com/gaskaj/OpenAgentFramework/frontend/node_modules/flatted/golang/pkg/flatted	[no test files]
+ok  	github.com/gaskaj/OpenAgentFramework/internal/agent	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/claude	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/cli	0.850s
+ok  	github.com/gaskaj/OpenAgentFramework/internal/config	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/creativity	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/developer	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/errors	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/ghub	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/gitops	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/integration	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/observability	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/orchestrator	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/state	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/testing	(cached)
+ok  	github.com/gaskaj/OpenAgentFramework/internal/workspace	(cached)
+?   	github.com/gaskaj/OpenAgentFramework/pkg/apitypes	[no test files]
+ok  	github.com/gaskaj/OpenAgentFramework/pkg/reporter	(cached)
+?   	github.com/gaskaj/OpenAgentFramework/scripts	[no test files]
+?   	github.com/gaskaj/OpenAgentFramework/web/auth	[no test files]
+?   	github.com/gaskaj/OpenAgentFramework/web/config	[no test files]
+ok  	github.com/gaskaj/OpenAgentFramework/web/handler	(cached)
+?   	github.com/gaskaj/OpenAgentFramework/web/middleware	[no test files]
+?   	github.com/gaskaj/OpenAgentFramework/web/migrate	[no test files]
+?   	github.com/gaskaj/OpenAgentFramework/web/router	[no test files]
+?   	github.com/gaskaj/OpenAgentFramework/web/server	[no test files]
+?   	github.com/gaskaj/OpenAgentFramework/web/store	[no test files]
+?   	github.com/gaskaj/OpenAgentFramework/web/ws	[no test files]

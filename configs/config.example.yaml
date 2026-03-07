@@ -36,6 +36,8 @@ controlplane:
     api_key: "oaf_f0d78f01d79736d916c7faceced40e92b7467d469c5484e1327edc3b70e3181d"
     agent_name: "developer-1"
     heartbeat_interval: 30s
+    # API version to use for communication with control plane
+    api_version: "v1"
 
 claude:
   # Anthropic API key

@@ -25,6 +25,7 @@ type Config struct {
 	GitHubOwner     string
 	GitHubRepo      string
 	Tags            []string
+	APIVersion      string        // API version to use for communication
 	BufferSize      int
 	FlushInterval   time.Duration
 	Timeout         time.Duration
@@ -42,6 +43,9 @@ func (c *Config) defaults() {
 	}
 	if c.Hostname == "" {
 		c.Hostname, _ = os.Hostname()
+	}
+	if c.APIVersion == "" {
+		c.APIVersion = "v1"
 	}
 }
 
@@ -100,6 +104,9 @@ func New(cfg Config) (*Reporter, error) {
 func (r *Reporter) Report(ctx context.Context, event apitypes.AgentEvent) error {
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now()
+	}
+	if event.APIVersion == "" {
+		event.APIVersion = r.cfg.APIVersion
 	}
 	select {
 	case r.events <- event:
@@ -283,6 +290,7 @@ func (r *Reporter) sendHeartbeat(ctx context.Context) {
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+r.cfg.APIKey)
+	httpReq.Header.Set("Accept", fmt.Sprintf("application/vnd.openagent.%s+json", r.cfg.APIVersion))
 
 	resp, err := r.client.Do(httpReq)
 	if err != nil {
@@ -301,6 +309,7 @@ func (r *Reporter) register(ctx context.Context) {
 		GitHubOwner: r.cfg.GitHubOwner,
 		GitHubRepo:  r.cfg.GitHubRepo,
 		Tags:        r.cfg.Tags,
+		APIVersion:  r.cfg.APIVersion,
 	}
 	body, err := json.Marshal(reg)
 	if err != nil {
@@ -314,6 +323,7 @@ func (r *Reporter) register(ctx context.Context) {
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+r.cfg.APIKey)
+	httpReq.Header.Set("Accept", fmt.Sprintf("application/vnd.openagent.%s+json", r.cfg.APIVersion))
 
 	resp, err := r.client.Do(httpReq)
 	if err != nil {

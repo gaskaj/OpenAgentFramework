@@ -1,0 +1,48 @@
+# API Versioning Configuration
+# This file defines the supported API versions and their deprecation timeline
+
+# Default API version to use when none is specified
+default_version: "v1"
+
+# Whether to include deprecation warnings in response headers
+deprecation_warning: true
+
+# List of supported API versions with their status
+supported_versions:
+  - version: "v1"
+    is_default: true
+    is_deprecated: false
+    # No deprecation or sunset dates for current version
+
+  # Example of how to add a new version:
+  # - version: "v2"
+  #   is_default: false
+  #   is_deprecated: false
+
+  # Example of a deprecated version:
+  # - version: "v0"
+  #   is_default: false
+  #   is_deprecated: true
+  #   deprecated_at: "2024-01-15T00:00:00Z"
+  #   sunset_at: "2024-07-15T00:00:00Z"
+
+# Deprecation process timeline:
+# 1. Warning Phase (6 months): Add deprecation headers and logs
+#    - Set is_deprecated: true
+#    - Set deprecated_at to the deprecation announcement date
+#    - Set sunset_at to 6 months after deprecation
+#
+# 2. Sunset Phase (final 3 months): Return 410 Gone with migration guide
+#    - sunset_at date is reached
+#    - API returns HTTP 410 with migration information
+#
+# 3. Removal Phase: Complete endpoint removal
+#    - Remove version from supported_versions list
+#    - Clean up version-specific handler code
+
+# Version detection priority:
+# 1. Accept header: Accept: application/vnd.openagent.v2+json
+# 2. API-Version header: API-Version: v2
+# 3. Query parameter: ?api-version=v2
+# 4. URL path: /api/v2/agents (if using path-based versioning)
+# 5. Default version (configured above)

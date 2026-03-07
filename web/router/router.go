@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/cors"
 
 	"github.com/gaskaj/OpenAgentFramework/web/auth"
+	"github.com/gaskaj/OpenAgentFramework/web/config"
 	"github.com/gaskaj/OpenAgentFramework/web/handler"
 	"github.com/gaskaj/OpenAgentFramework/web/middleware"
 	"github.com/gaskaj/OpenAgentFramework/web/store"
@@ -21,6 +22,7 @@ func New(
 	jwtMgr *auth.JWTManager,
 	hub *ws.Hub,
 	authHandler *handler.AuthHandler,
+	versionConfig config.VersionConfig,
 	logger *slog.Logger,
 	allowedOrigins []string,
 ) http.Handler {
@@ -31,11 +33,31 @@ func New(
 	r.Use(chimw.RealIP)
 	r.Use(middleware.RequestLogger(logger))
 	r.Use(chimw.Recoverer)
+	
+	// Convert config.VersionConfig to middleware.VersionConfig
+	middlewareVersionConfig := middleware.VersionConfig{
+		DefaultVersion:     versionConfig.DefaultVersion,
+		DeprecationWarning: versionConfig.DeprecationWarning,
+		SupportedVersions:  make([]middleware.APIVersion, len(versionConfig.SupportedVersions)),
+	}
+	for i, v := range versionConfig.SupportedVersions {
+		middlewareVersionConfig.SupportedVersions[i] = middleware.APIVersion{
+			Version:      v.Version,
+			IsDefault:    v.IsDefault,
+			IsDeprecated: v.IsDeprecated,
+			DeprecatedAt: v.DeprecatedAt,
+			SunsetAt:     v.SunsetAt,
+		}
+	}
+	
+	// Add API versioning middleware
+	r.Use(middleware.NewVersionMiddleware(middlewareVersionConfig).VersionHandler())
+	
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
-		ExposedHeaders:   []string{"Link"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "API-Version"},
+		ExposedHeaders:   []string{"Link", "API-Version", "Deprecation", "Warning", "Deprecation-Date", "Sunset"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))

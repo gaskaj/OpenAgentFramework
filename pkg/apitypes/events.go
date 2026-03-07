@@ -42,6 +42,7 @@ type AgentEvent struct {
 	WorkflowState string         `json:"workflow_state,omitempty"`
 	CorrelationID string         `json:"correlation_id,omitempty"`
 	Timestamp     time.Time      `json:"timestamp"`
+	APIVersion    string         `json:"api_version,omitempty"`
 }
 
 // AgentRegistration is the payload agents send to register with the control plane.
@@ -54,6 +55,7 @@ type AgentRegistration struct {
 	GitHubRepo  string         `json:"github_repo,omitempty"`
 	Tags        []string       `json:"tags,omitempty"`
 	Config      map[string]any `json:"config,omitempty"`
+	APIVersion  string         `json:"api_version,omitempty"`
 }
 
 // BatchEventRequest is the request body for batch event ingestion.
