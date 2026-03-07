@@ -296,7 +296,7 @@ Brief description of the changes made.
 
 ### Go Code Style
 
-Follow the conventions outlined in [docs/code-conventions.md](docs/code-conventions.md):
+Follow the conventions outlined in [docs/guides/code-conventions.md](docs/guides/code-conventions.md):
 
 1. **Formatting**: Use `gofmt` and `goimports`
 2. **Naming**: Clear, descriptive names
@@ -401,10 +401,10 @@ Use the appropriate issue template and provide:
 
 ### Resources
 
-- [Architecture Documentation](docs/architecture.md)
-- [Developer Workflow](docs/developer-workflow.md)
-- [Test Coverage Guide](docs/test-coverage.md)
-- [Quality Assurance](docs/quality-assurance.md)
+- [Architecture Documentation](docs/architecture/architecture.md)
+- [Developer Workflow](docs/guides/developer-workflow.md)
+- [Test Coverage Guide](docs/testing/test-coverage.md)
+- [Quality Assurance](docs/testing/quality-assurance.md)
 
 ### Support Channels
 

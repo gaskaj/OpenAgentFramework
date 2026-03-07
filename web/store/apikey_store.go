@@ -49,7 +49,7 @@ func (s *PgAPIKeyStore) ListByOrg(ctx context.Context, orgID uuid.UUID) ([]APIKe
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, org_id, created_by, name, key_prefix, scopes, last_used, expires_at, revoked, created_at
 		 FROM api_keys
-		 WHERE org_id = $1
+		 WHERE org_id = $1 AND revoked = FALSE
 		 ORDER BY created_at DESC`, orgID,
 	)
 	if err != nil {

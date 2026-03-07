@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -69,6 +70,9 @@ func (h *EventHandler) HandleIngestSingle(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Update agent status based on event type
+	h.updateAgentStatusFromEvent(r.Context(), agent.ID, req.Event.EventType)
+
 	// Broadcast to WebSocket clients
 	h.broadcastEvent(orgCtx.OrgID, event)
 
@@ -118,6 +122,11 @@ func (h *EventHandler) HandleIngestBatch(w http.ResponseWriter, r *http.Request)
 		h.logger.Error("inserting event batch", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to store events")
 		return
+	}
+
+	// Update agent status based on event types in batch
+	for _, e := range req.Events {
+		h.updateAgentStatusFromEvent(r.Context(), agent.ID, e.EventType)
 	}
 
 	// Broadcast last event to WebSocket
@@ -323,6 +332,21 @@ func (h *EventHandler) HandleAgentEvents(w http.ResponseWriter, r *http.Request)
 	}
 
 	respondList(w, events, total, filter.Limit, filter.Offset)
+}
+
+func (h *EventHandler) updateAgentStatusFromEvent(ctx context.Context, agentID uuid.UUID, eventType apitypes.EventType) {
+	var status string
+	switch eventType {
+	case apitypes.EventAgentStarted:
+		status = "online"
+	case apitypes.EventAgentStopped:
+		status = "offline"
+	default:
+		return
+	}
+	if err := h.agents.UpdateStatus(ctx, agentID, status); err != nil {
+		h.logger.Error("updating agent status from event", "agent_id", agentID, "status", status, "error", err)
+	}
 }
 
 func (h *EventHandler) broadcastEvent(orgID uuid.UUID, event *store.AgentEvent) {

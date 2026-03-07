@@ -132,24 +132,24 @@ From `internal/developer/prompts.go`:
 
 Required env vars: `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`
 
-Config file: `configs/config.yaml` — see [docs/configuration.md](docs/configuration.md) for full reference.
+Config file: `configs/config.yaml` — see [docs/configuration/configuration.md](docs/configuration/configuration.md) for full reference.
 
 Key sections: `github`, `claude`, `agents`, `state`, `logging`, `creativity`, `decomposition`, `error_handling`
 
 ## Deep-Dive Documentation
 
-- [docs/architecture.md](docs/architecture.md) — System design, packages, data flow, agent personas
-- [docs/developer-workflow.md](docs/developer-workflow.md) — State machine, decomposition, creativity, self-building
-- [docs/claude-integration.md](docs/claude-integration.md) — Client, conversation loop, tools, prompts, SDK patterns
-- [docs/github-integration.md](docs/github-integration.md) — Client interface, poller, labels, branches, PRs
-- [docs/configuration.md](docs/configuration.md) — Full YAML reference, env vars, defaults, validation
-- [docs/code-conventions.md](docs/code-conventions.md) — Error handling, naming, interfaces, logging, testing
-- [docs/package-reference.md](docs/package-reference.md) — Per-package API catalog
-- [docs/structured-logging.md](docs/structured-logging.md) — Observability, correlation IDs, metrics
-- [docs/integration-testing.md](docs/integration-testing.md) — Integration test suite, mock infrastructure, CI pipeline
-- [docs/webui-architecture.md](docs/webui-architecture.md) — Control plane WebUI architecture, multi-tenant design
-- [docs/webui-api-reference.md](docs/webui-api-reference.md) — REST API endpoints for the control plane
-- [docs/webui-deployment.md](docs/webui-deployment.md) — Docker Compose deployment, configuration
+- [docs/architecture/architecture.md](docs/architecture/architecture.md) — System design, packages, data flow, agent personas
+- [docs/architecture/package-reference.md](docs/architecture/package-reference.md) — Per-package API catalog
+- [docs/guides/developer-workflow.md](docs/guides/developer-workflow.md) — State machine, decomposition, creativity, self-building
+- [docs/guides/claude-integration.md](docs/guides/claude-integration.md) — Client, conversation loop, tools, prompts, SDK patterns
+- [docs/guides/github-integration.md](docs/guides/github-integration.md) — Client interface, poller, labels, branches, PRs
+- [docs/guides/code-conventions.md](docs/guides/code-conventions.md) — Error handling, naming, interfaces, logging, testing
+- [docs/configuration/configuration.md](docs/configuration/configuration.md) — Full YAML reference, env vars, defaults, validation
+- [docs/observability/structured-logging.md](docs/observability/structured-logging.md) — Observability, correlation IDs, metrics
+- [docs/testing/integration-testing.md](docs/testing/integration-testing.md) — Integration test suite, mock infrastructure, CI pipeline
+- [docs/webui/webui-architecture.md](docs/webui/webui-architecture.md) — Control plane WebUI architecture, multi-tenant design
+- [docs/webui/webui-api-reference.md](docs/webui/webui-api-reference.md) — REST API endpoints for the control plane
+- [docs/webui/webui-deployment.md](docs/webui/webui-deployment.md) — Docker Compose deployment, configuration
 
 ## WebUI Testing Requirements
 

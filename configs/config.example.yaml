@@ -2,7 +2,7 @@
 #
 # Environment variables can be used with ${VAR_NAME} syntax.
 # All ${VAR_NAME} references are expanded from environment variables at runtime.
-# See docs/environment-variables.md for complete reference.
+# See docs/configuration/environment-variables.md for complete reference.
 
 github:
   # Personal access token (repo scope required)

@@ -14,14 +14,29 @@ OpenAgentFramework provides agent personas — Developer, QA, and Development Ma
 | Document | Description |
 |----------|-------------|
 | [CLAUDE.md](CLAUDE.md) | LLM-first project orientation |
-| [docs/architecture.md](docs/architecture.md) | System design, packages, data flow |
-| [docs/developer-workflow.md](docs/developer-workflow.md) | State machine, decomposition, creativity |
-| [docs/claude-integration.md](docs/claude-integration.md) | Claude client, tools, prompts, SDK patterns |
-| [docs/github-integration.md](docs/github-integration.md) | GitHub client, poller, labels, PRs |
-| [docs/configuration.md](docs/configuration.md) | Full YAML reference, env vars, defaults |
-| [docs/code-conventions.md](docs/code-conventions.md) | Go patterns, testing, git conventions |
-| [docs/package-reference.md](docs/package-reference.md) | Per-package API catalog |
-| [docs/structured-logging.md](docs/structured-logging.md) | Observability, correlation IDs, metrics |
+| **Architecture** | |
+| [architecture.md](docs/architecture/architecture.md) | System design, packages, data flow |
+| [package-reference.md](docs/architecture/package-reference.md) | Per-package API catalog |
+| **Guides** | |
+| [developer-workflow.md](docs/guides/developer-workflow.md) | State machine, decomposition, creativity |
+| [claude-integration.md](docs/guides/claude-integration.md) | Claude client, tools, prompts, SDK patterns |
+| [github-integration.md](docs/guides/github-integration.md) | GitHub client, poller, labels, PRs |
+| [code-conventions.md](docs/guides/code-conventions.md) | Go patterns, testing, git conventions |
+| **Configuration** | |
+| [configuration.md](docs/configuration/configuration.md) | Full YAML reference, env vars, defaults |
+| [configuration-management.md](docs/configuration/configuration-management.md) | Runtime validation, environment overlays |
+| [environment-variables.md](docs/configuration/environment-variables.md) | Environment variable reference |
+| **Observability** | |
+| [structured-logging.md](docs/observability/structured-logging.md) | Observability, correlation IDs, metrics |
+| [error-recovery.md](docs/observability/error-recovery.md) | Error handling, retry, circuit breakers |
+| **Testing** | |
+| [testing-strategy.md](docs/testing/testing-strategy.md) | Test strategy and patterns |
+| [integration-testing.md](docs/testing/integration-testing.md) | Integration test suite, CI pipeline |
+| [test-coverage.md](docs/testing/test-coverage.md) | Coverage reporting and quality gates |
+| **WebUI / Control Plane** | |
+| [webui-architecture.md](docs/webui/webui-architecture.md) | Control plane architecture, multi-tenant design |
+| [webui-api-reference.md](docs/webui/webui-api-reference.md) | REST API endpoints |
+| [webui-deployment.md](docs/webui/webui-deployment.md) | Docker Compose deployment |
 
 ## Architecture
 
@@ -56,7 +71,7 @@ Agents coordinate entirely through GitHub:
 idle → claim → workspace → analyze → [decompose] → implement → commit → PR → review → complete
 ```
 
-When idle and creativity is enabled, the agent enters `creative_thinking` mode — generating improvement suggestions as GitHub issues. Complex issues are automatically decomposed into subtasks. See [docs/developer-workflow.md](docs/developer-workflow.md) for details.
+When idle and creativity is enabled, the agent enters `creative_thinking` mode — generating improvement suggestions as GitHub issues. Complex issues are automatically decomposed into subtasks. See [docs/guides/developer-workflow.md](docs/guides/developer-workflow.md) for details.
 
 ## Setup
 
@@ -73,7 +88,7 @@ cp configs/config.example.yaml configs/config.yaml
 # Edit configs/config.yaml with your tokens and repo details
 ```
 
-See [docs/configuration.md](docs/configuration.md) for the full YAML reference.
+See [docs/configuration/configuration.md](docs/configuration/configuration.md) for the full YAML reference.
 
 ### Build & Run
 
