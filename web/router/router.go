@@ -64,17 +64,22 @@ func New(
 
 	// Create handlers
 	orgHandler := handler.NewOrgHandler(stores.Orgs, logger)
-	agentHandler := handler.NewAgentHandler(stores.Agents, logger)
+	agentHandler := handler.NewAgentHandler(stores.Agents, stores.APIKeys, logger)
 	eventHandler := handler.NewEventHandler(stores.Events, stores.Agents, hub, logger)
 	apikeyHandler := handler.NewAPIKeyHandler(stores.APIKeys, logger)
 	invitationHandler := handler.NewInvitationHandler(stores.Invitations, stores.Orgs, stores.Users, logger)
 	auditHandler := handler.NewAuditHandler(stores.AuditLogs, logger)
 	wsHandler := handler.NewWSHandler(hub, jwtMgr, logger)
 	openAPIHandler := handler.NewOpenAPIHandler()
+	configHandler := handler.NewConfigHandler(stores.Configs, stores.Agents, logger)
+	releaseHandler := handler.NewReleaseHandler("gaskaj", "OpenAgentFramework", logger)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// OpenAPI specification (public)
 		r.Get("/openapi.json", openAPIHandler.HandleSpec)
+
+		// Latest release info (public, cached)
+		r.Get("/releases/latest", releaseHandler.HandleLatestRelease)
 
 		// Health check
 		r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +104,7 @@ func New(
 			r.Post("/events", eventHandler.HandleIngestSingle)
 			r.Post("/events/batch", eventHandler.HandleIngestBatch)
 			r.Post("/heartbeat", eventHandler.HandleIngestHeartbeat)
+			r.Get("/config", configHandler.HandleIngestConfig)
 		})
 
 		// Protected routes (JWT auth)
@@ -124,6 +130,7 @@ func New(
 
 				// Agents
 				r.Post("/agents", agentHandler.HandleRegister)
+				r.Post("/agents/provision", agentHandler.HandleProvision)
 				r.Get("/agents", agentHandler.HandleList)
 				r.Get("/agents/{agentId}", agentHandler.HandleGet)
 				r.Put("/agents/{agentId}", agentHandler.HandleUpdate)
@@ -146,6 +153,18 @@ func New(
 
 				// Audit logs
 				r.Get("/audit", auditHandler.HandleQuery)
+
+				// Configuration management
+				r.Route("/config", func(r chi.Router) {
+					r.Get("/types", configHandler.HandleListAgentTypeConfigs)
+					r.Get("/types/{agentType}", configHandler.HandleGetAgentTypeConfig)
+					r.Put("/types/{agentType}", configHandler.HandleUpsertAgentTypeConfig)
+					r.Get("/agents/{agentId}", configHandler.HandleGetAgentOverride)
+					r.Put("/agents/{agentId}", configHandler.HandleUpsertAgentOverride)
+					r.Delete("/agents/{agentId}", configHandler.HandleDeleteAgentOverride)
+					r.Get("/agents/{agentId}/merged", configHandler.HandleGetMergedConfig)
+					r.Get("/audit", configHandler.HandleConfigAudit)
+				})
 
 				// WebSocket
 				r.Get("/ws", wsHandler.HandleConnect)

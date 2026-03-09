@@ -1,6 +1,6 @@
-# WebUI Pages Reference
+# Control Plane Pages Reference
 
-This document describes all pages in the OpenAgentFramework control plane WebUI, their features, and how to use them. Screenshots are captured automatically via Playwright (see `frontend/e2e/screenshots.spec.ts`).
+This document describes all pages in the OpenAgentFramework control plane, their features, and how to use them. Screenshots are captured automatically via Playwright (see `frontend/e2e/screenshots.spec.ts`).
 
 ## Public Pages (No Authentication Required)
 
@@ -78,17 +78,48 @@ Fleet overview with real-time statistics and visualizations:
 
 Browse and manage the agent fleet:
 
+- **Create New Agent** button — provisions a new agent with API key (see below)
 - **View toggle** — Switch between grid (cards) and table view
 - **Search** — Filter agents by name, type, or GitHub repository
 - **Status tabs** — All, Online, Offline, Error
 - **Responsive grid** — 1 column (mobile) to 3 columns (desktop)
 - Click any agent to navigate to its detail page
+- Agents created via the UI appear as "offline" until the agent process connects
 
 **Source**: `frontend/src/pages/AgentListPage.tsx`
 
 ---
 
+### Create Agent (`/agents/new`)
+
+![Create Agent](screenshots/create-agent.png)
+
+Provision a new agent and generate its API key in one step:
+
+- **Agent Type** — Select from developer, reviewer, or monitor with descriptions
+- **Agent Name** — Optional; auto-generated as `{type}-{XX}` (e.g., `developer-01`) if left blank
+- Creates both the agent record (status "offline") and a bound API key
+- On success, shows the agent details and the raw API key:
+
+![Agent Created](screenshots/agent-created.png)
+
+  - Agent metadata: name, type, status, ID
+  - Raw API key with copy-to-clipboard button (shown only once)
+  - Ready-to-use minimal remote config YAML snippet
+  - **Download & Run** section with platform-specific tabs:
+    - Auto-detects the user's OS (macOS, Linux, Windows)
+    - Direct download link to the versioned `agentctl` binary from the latest GitHub Release
+    - Copy-paste setup script: downloads binary, writes config with pre-filled API key and control plane URL, starts the agent
+    - Falls back to "build from source" instructions if no release is published yet
+  - "View Agent" button to navigate to detail page
+
+**Source**: `frontend/src/pages/CreateAgentPage.tsx`, `frontend/src/components/DownloadInstructions.tsx`
+
+---
+
 ### Agent Detail (`/agents/:agentId`)
+
+![Agent Detail](screenshots/agent-detail.png)
 
 Detailed view of a single agent:
 
@@ -96,10 +127,48 @@ Detailed view of a single agent:
 - **Metadata** — Version, hostname, GitHub repo, last heartbeat, tags
 - **Configuration** — JSON snapshot of the agent's config at registration time
 - **Event Timeline** — Last 50 events from this agent
+- **Configure** — Navigate to per-agent config override page
 - **Deregister** — Remove agent (with confirmation dialog)
 - Back button to return to agent list
 
 **Source**: `frontend/src/pages/AgentDetailPage.tsx`
+
+---
+
+### Global Configuration (`/config`)
+
+![Global Configuration](screenshots/config.png)
+
+Manage the global (agent type-level) configuration that all agents of a given type inherit:
+
+- **Sections**: Claude AI, Agent Settings, Creativity Engine, Issue Decomposition, Repository Memory, Logging, Shutdown, Error Handling
+- **Form view** — Structured fields with descriptions and defaults matching `config.example.yaml`
+- **JSON view** — Raw JSON editor for advanced users
+- **Load Defaults** — Populate with sensible defaults when config is empty
+- GitHub owner/repo/token and Claude API key are set at the **per-agent level**, not globally (see Agent Config Override)
+- Password masking for sensitive fields (tokens, API keys)
+- Version tracking with audit trail
+
+**Source**: `frontend/src/pages/ConfigPage.tsx`
+
+---
+
+### Agent Config Override (`/agents/:agentId/config`)
+
+![Agent Config Override](screenshots/agent-config.png)
+
+Override specific configuration fields for a single agent, inheriting all other values from the global type config:
+
+- **All sections** including GitHub (owner, repo, token) and Claude (API key) — these are per-agent fields
+- **Inherited values** shown as placeholders from the global config
+- **Amber highlights** on overridden fields with "overridden" badge on sections
+- **Per-field clear** — X button to remove individual overrides
+- **Override counter** — Shows how many fields are overridden
+- **Preview Merged** — Shows the effective final config
+- **JSON view** toggle for raw editing
+- **Reset** — Remove all overrides for this agent
+
+**Source**: `frontend/src/pages/AgentConfigOverridePage.tsx`
 
 ---
 
@@ -129,7 +198,8 @@ Comprehensive real-time and historical event viewer:
 
 Manage API keys used by agents to authenticate with the control plane:
 
-- **Create Key** — Enter a name and click Create
+- **Create Key** — Select an agent type (developer, reviewer, monitor) and optionally provide a custom name
+- Agent name auto-generates as `{type}-{XX}` if left blank
 - **Key Display Modal** — Shows the raw key exactly once after creation:
 
 ![API Key Created Modal](screenshots/api-key-created.png)
@@ -140,10 +210,13 @@ Manage API keys used by agents to authenticate with the control plane:
   - Done button dismisses the modal
 
 - **Active Keys List** — Each key shows:
+  - Agent name and type badge
   - Key prefix (masked)
   - Creation time
   - Last used time
   - Revoke button (removes key permanently)
+
+**Note**: For the recommended workflow, use **Create New Agent** on the Agents page instead — it creates both the agent and API key in one step.
 
 **Source**: `frontend/src/pages/ApiKeysPage.tsx`
 
@@ -214,4 +287,4 @@ cd frontend
 npx playwright test e2e/screenshots.spec.ts
 ```
 
-This requires the full stack to be running (`docker compose up`). Screenshots are saved to `docs/webui/screenshots/`.
+This requires the full stack to be running (`docker compose up`). Screenshots are saved to `docs/controlplane/screenshots/`.

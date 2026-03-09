@@ -18,6 +18,8 @@ import (
 	"github.com/gaskaj/OpenAgentFramework/internal/observability"
 	"github.com/gaskaj/OpenAgentFramework/internal/orchestrator"
 	"github.com/gaskaj/OpenAgentFramework/internal/state"
+	"github.com/gaskaj/OpenAgentFramework/internal/version"
+	"github.com/gaskaj/OpenAgentFramework/pkg/apitypes"
 	"github.com/gaskaj/OpenAgentFramework/pkg/reporter"
 	"github.com/spf13/cobra"
 )
@@ -41,6 +43,30 @@ func runStart(cmd *cobra.Command, args []string) error {
 	cfg, err := config.Load(cfgFile)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
+	}
+
+	// If remote config mode is enabled, fetch config from control plane
+	if cfg.ControlPlane.Enabled && cfg.ControlPlane.ConfigMode == "remote" {
+		fetcher := reporter.NewConfigFetcher(reporter.Config{
+			ControlPlaneURL: cfg.ControlPlane.URL,
+			APIKey:          cfg.ControlPlane.APIKey,
+		})
+		remoteResp, fetchErr := fetcher.FetchConfig(context.Background())
+		if fetchErr != nil {
+			return fmt.Errorf("fetching remote config: %w", fetchErr)
+		}
+		if remoteResp != nil {
+			config.MergeRemoteConfig(cfg, &remoteResp.Config)
+		}
+		// When running in remote mode, default the developer agent to enabled
+		// since the user is explicitly starting the agent process.
+		if !cfg.Agents.Developer.Enabled {
+			cfg.Agents.Developer.Enabled = true
+		}
+		// Validate the merged config now that remote values are applied
+		if err := config.Validate(cfg); err != nil {
+			return fmt.Errorf("validating merged remote config: %w", err)
+		}
 	}
 
 	logger := setupLogger(cfg.Logging.Level)
@@ -86,9 +112,8 @@ func runStart(cmd *cobra.Command, args []string) error {
 		rptr, err = reporter.New(reporter.Config{
 			ControlPlaneURL: cfg.ControlPlane.URL,
 			APIKey:          cfg.ControlPlane.APIKey,
-			AgentName:       cfg.ControlPlane.AgentName,
 			AgentType:       "developer",
-			Version:         "0.1.0",
+			Version:         version.Version,
 			Hostname:        hostname,
 			GitHubOwner:     cfg.GitHub.Owner,
 			GitHubRepo:      cfg.GitHub.Repo,
@@ -97,7 +122,7 @@ func runStart(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			logger.Warn("failed to initialize control plane reporter, continuing without it", "error", err)
 		} else {
-			logger.Info("control plane reporter initialized", "url", cfg.ControlPlane.URL, "agent", cfg.ControlPlane.AgentName)
+			logger.Info("control plane reporter initialized", "url", cfg.ControlPlane.URL)
 		}
 	}
 
@@ -135,6 +160,22 @@ func runStart(cmd *cobra.Command, args []string) error {
 	// Start control plane heartbeat now that we have a context
 	if rptr != nil && cfg.ControlPlane.HeartbeatInterval > 0 {
 		rptr.Heartbeat(ctx, cfg.ControlPlane.HeartbeatInterval)
+	}
+
+	// Start config polling if in remote mode
+	if cfg.ControlPlane.Enabled && cfg.ControlPlane.ConfigMode == "remote" {
+		pollInterval := cfg.ControlPlane.ConfigPollInterval
+		if pollInterval == 0 {
+			pollInterval = 30 * time.Second
+		}
+		configFetcher := reporter.NewConfigFetcher(reporter.Config{
+			ControlPlaneURL: cfg.ControlPlane.URL,
+			APIKey:          cfg.ControlPlane.APIKey,
+		})
+		go configFetcher.PollLoop(ctx, pollInterval, func(resp *apitypes.ConfigResponse) {
+			config.MergeRemoteConfig(cfg, &resp.Config)
+			logger.Info("configuration updated from control plane", "version", resp.Version)
+		})
 	}
 
 	// Initialize recovery manager to handle interrupted workflows

@@ -8,8 +8,11 @@ import * as apiKeysApi from '@/api/apikeys';
 import type { APIKey } from '@/types';
 import { TimeAgo } from '@/components/common/TimeAgo';
 
+const AGENT_TYPES = ['developer', 'reviewer', 'monitor'] as const;
+
 const createSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(64),
+  agent_type: z.string().min(1, 'Agent type is required'),
+  name: z.string().max(255).optional(),
 });
 
 type CreateFormData = z.infer<typeof createSchema>;
@@ -27,6 +30,7 @@ export function ApiKeysPage() {
     formState: { errors, isSubmitting },
   } = useForm<CreateFormData>({
     resolver: zodResolver(createSchema),
+    defaultValues: { agent_type: 'developer' },
   });
 
   const loadKeys = useCallback(async () => {
@@ -41,7 +45,11 @@ export function ApiKeysPage() {
 
   const handleCreate = async (data: CreateFormData) => {
     if (!currentOrg) return;
-    const result = await apiKeysApi.createAPIKey(currentOrg.slug, data.name);
+    const result = await apiKeysApi.createAPIKey(
+      currentOrg.slug,
+      data.agent_type,
+      data.name || undefined,
+    );
     setNewRawKey(result.key);
     reset();
     loadKeys();
@@ -65,7 +73,7 @@ export function ApiKeysPage() {
       <div>
         <h1 className="text-2xl font-bold text-zinc-100">API Keys</h1>
         <p className="mt-1 text-sm text-zinc-400">
-          Manage API keys for agent authentication
+          Manage API keys for agent authentication. Each key is bound to an agent type and auto-generates an agent name.
         </p>
       </div>
 
@@ -74,25 +82,40 @@ export function ApiKeysPage() {
         <h2 className="mb-4 text-sm font-medium text-zinc-300">Create New Key</h2>
         <form
           onSubmit={handleSubmit(handleCreate)}
-          className="flex flex-col gap-3 sm:flex-row"
+          className="flex flex-col gap-3"
         >
-          <input
-            {...register('name')}
-            placeholder="Key name (e.g., production-agent)"
-            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-blue-500"
-          />
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            Create
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <select
+              {...register('agent_type')}
+              className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500"
+            >
+              {AGENT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+            <input
+              {...register('name')}
+              placeholder="Custom name (optional — auto-generated if empty)"
+              className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-blue-500"
+            />
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              Create
+            </button>
+          </div>
+          {errors.agent_type && (
+            <p className="text-xs text-red-400">{errors.agent_type.message}</p>
+          )}
+          <p className="text-xs text-zinc-500">
+            Agent name defaults to <code className="text-zinc-400">{'{agent_type}-{XX}'}</code> where XX increments per type.
+          </p>
         </form>
-        {errors.name && (
-          <p className="mt-1 text-xs text-red-400">{errors.name.message}</p>
-        )}
       </div>
 
       {/* Modal: show new key once */}
@@ -173,7 +196,14 @@ export function ApiKeysPage() {
                 <div className="flex items-center gap-3">
                   <Key className="h-4 w-4 text-zinc-600" />
                   <div>
-                    <p className="text-sm font-medium text-zinc-200">{key.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-zinc-200">
+                        {key.agent_name || key.name}
+                      </p>
+                      <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                        {key.agent_type || 'developer'}
+                      </span>
+                    </div>
                     <div className="mt-0.5 flex items-center gap-3 text-xs text-zinc-500">
                       <span className="font-mono">{key.key_prefix}...</span>
                       <span>

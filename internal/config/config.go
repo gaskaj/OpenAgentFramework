@@ -37,13 +37,15 @@ type MemoryConfig struct {
 	ExtractOnComplete bool `mapstructure:"extract_on_complete"`
 }
 
-// ControlPlaneConfig holds configuration for reporting to the WebUI control plane.
+// ControlPlaneConfig holds configuration for reporting to the control plane.
+// Note: agent_name is derived from the API key (set when creating the key in the control plane UI).
 type ControlPlaneConfig struct {
-	Enabled           bool          `mapstructure:"enabled"`
-	URL               string        `mapstructure:"url"`
-	APIKey            string        `mapstructure:"api_key"`
-	AgentName         string        `mapstructure:"agent_name"`
-	HeartbeatInterval time.Duration `mapstructure:"heartbeat_interval"`
+	Enabled            bool          `mapstructure:"enabled"`
+	URL                string        `mapstructure:"url"`
+	APIKey             string        `mapstructure:"api_key"`
+	HeartbeatInterval  time.Duration `mapstructure:"heartbeat_interval"`
+	ConfigMode         string        `mapstructure:"config_mode"`          // "local" (default) or "remote"
+	ConfigPollInterval time.Duration `mapstructure:"config_poll_interval"` // default 30s
 }
 
 // GitHubConfig holds GitHub-related configuration.
@@ -428,6 +430,14 @@ func LoadWithOptions(path string, skipNetworkValidation bool) (*Config, error) {
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("unmarshaling config from %q: %w", path, err)
+	}
+
+	// Skip validation when using remote config mode — fields like github.token,
+	// github.owner, github.repo, and claude.api_key will be fetched from the
+	// control plane after loading.
+	if cfg.ControlPlane.Enabled && cfg.ControlPlane.ConfigMode == "remote" {
+		ApplyDefaults(&cfg)
+		return &cfg, nil
 	}
 
 	// Validate configuration with enhanced validation

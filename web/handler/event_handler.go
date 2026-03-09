@@ -42,7 +42,13 @@ func (h *EventHandler) HandleIngestSingle(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	agent, err := h.agents.GetByOrgAndName(r.Context(), orgCtx.OrgID, req.AgentName)
+	// Prefer agent identity from API key context; fall back to request body
+	agentName := orgCtx.AgentName
+	if agentName == "" {
+		agentName = req.AgentName
+	}
+
+	agent, err := h.agents.GetByOrgAndName(r.Context(), orgCtx.OrgID, agentName)
 	if err != nil || agent == nil {
 		respondError(w, http.StatusNotFound, "agent not found")
 		return
@@ -92,7 +98,13 @@ func (h *EventHandler) HandleIngestBatch(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	agent, err := h.agents.GetByOrgAndName(r.Context(), orgCtx.OrgID, req.AgentName)
+	// Prefer agent identity from API key context; fall back to request body
+	agentName := orgCtx.AgentName
+	if agentName == "" {
+		agentName = req.AgentName
+	}
+
+	agent, err := h.agents.GetByOrgAndName(r.Context(), orgCtx.OrgID, agentName)
 	if err != nil || agent == nil {
 		respondError(w, http.StatusNotFound, "agent not found")
 		return
@@ -150,6 +162,16 @@ func (h *EventHandler) HandleIngestRegister(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Prefer agent identity from API key context; fall back to request body
+	agentName := orgCtx.AgentName
+	if agentName == "" {
+		agentName = req.Name
+	}
+	agentType := orgCtx.AgentType
+	if agentType == "" {
+		agentType = req.AgentType
+	}
+
 	var configSnapshot json.RawMessage
 	if req.Config != nil {
 		configSnapshot, _ = json.Marshal(req.Config)
@@ -157,8 +179,8 @@ func (h *EventHandler) HandleIngestRegister(w http.ResponseWriter, r *http.Reque
 
 	agent := &store.Agent{
 		OrgID:          orgCtx.OrgID,
-		Name:           req.Name,
-		AgentType:      req.AgentType,
+		Name:           agentName,
+		AgentType:      agentType,
 		Version:        req.Version,
 		Hostname:       req.Hostname,
 		GitHubOwner:    req.GitHubOwner,
@@ -193,7 +215,13 @@ func (h *EventHandler) HandleIngestHeartbeat(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	agent, err := h.agents.GetByOrgAndName(r.Context(), orgCtx.OrgID, req.AgentName)
+	// Prefer agent identity from API key context; fall back to request body
+	agentName := orgCtx.AgentName
+	if agentName == "" {
+		agentName = req.AgentName
+	}
+
+	agent, err := h.agents.GetByOrgAndName(r.Context(), orgCtx.OrgID, agentName)
 	if err != nil || agent == nil {
 		respondError(w, http.StatusNotFound, "agent not found")
 		return

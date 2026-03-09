@@ -1,0 +1,2 @@
+ALTER TABLE api_keys DROP COLUMN IF EXISTS agent_name;
+ALTER TABLE api_keys DROP COLUMN IF EXISTS agent_type;

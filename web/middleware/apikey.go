@@ -20,6 +20,7 @@ type APIKeyOrgContext struct {
 }
 
 // RequireAPIKey is middleware that validates API keys for agent ingestion endpoints.
+// It also sets the agent identity (name, type) from the key in the OrgContext.
 func RequireAPIKey(keyStore *store.PgAPIKeyStore) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,9 +71,11 @@ func RequireAPIKey(keyStore *store.PgAPIKeyStore) func(http.Handler) http.Handle
 			// Update last used (fire-and-forget)
 			go keyStore.UpdateLastUsed(context.Background(), apiKey.ID)
 
-			// Set org context
+			// Set org context with agent identity from the API key
 			ctx := context.WithValue(r.Context(), orgContextKey, &OrgContext{
-				OrgID: apiKey.OrgID,
+				OrgID:     apiKey.OrgID,
+				AgentName: apiKey.AgentName,
+				AgentType: apiKey.AgentType,
 			})
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

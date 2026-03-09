@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createVersionHeaders,
   addVersionQuery,
@@ -82,7 +82,7 @@ describe('API Versioning Utilities', () => {
         'deprecation': 'true',
         'deprecation-date': '2024-01-15T00:00:00Z',
         'sunset': 'Mon, 15 Jul 2024 00:00:00 GMT',
-        'link': '</docs/webui/api-versioning.md>; rel="deprecation"; type="text/html"',
+        'link': '</docs/controlplane/api-versioning.md>; rel="deprecation"; type="text/html"',
       };
       const result = parseVersionResponse(headers);
       expect(result).toEqual({
@@ -90,7 +90,7 @@ describe('API Versioning Utilities', () => {
         isDeprecated: true,
         deprecationDate: '2024-01-15T00:00:00Z',
         sunsetDate: 'Mon, 15 Jul 2024 00:00:00 GMT',
-        migrationGuide: '/docs/webui/api-versioning.md',
+        migrationGuide: '/docs/controlplane/api-versioning.md',
       });
     });
 

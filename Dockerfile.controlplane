@@ -1,11 +1,19 @@
 FROM golang:1.25-alpine AS builder
 
+RUN apk --no-cache add git
+
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o controlplane ./cmd/controlplane
+
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags "-X github.com/gaskaj/OpenAgentFramework/internal/version.Version=${VERSION} \
+              -X github.com/gaskaj/OpenAgentFramework/internal/version.Commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown) \
+              -X github.com/gaskaj/OpenAgentFramework/internal/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    -o controlplane ./cmd/controlplane
 
 FROM alpine:3.20
 

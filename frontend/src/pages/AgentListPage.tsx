@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Search, LayoutGrid, List } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search, LayoutGrid, List, Plus } from 'lucide-react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { useAgents } from '@/hooks/useAgents';
 import { AgentCard } from '@/components/agents/AgentCard';
@@ -50,8 +51,17 @@ export function AgentListPage() {
           </p>
         </div>
 
-        {/* View toggle */}
-        <div className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800 p-1">
+        <div className="flex items-center gap-3">
+          <Link
+            to="/agents/new"
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" />
+            Create New Agent
+          </Link>
+
+          {/* View toggle */}
+          <div className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800 p-1">
           <button
             onClick={() => setViewMode('grid')}
             className={cn(
@@ -74,6 +84,7 @@ export function AgentListPage() {
           >
             <List className="h-4 w-4" />
           </button>
+          </div>
         </div>
       </div>
 

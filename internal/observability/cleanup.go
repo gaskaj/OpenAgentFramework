@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"syscall"
+
 	"time"
 
 	"compress/gzip"
@@ -138,16 +138,10 @@ func (m *LogCleanupManager) CleanupOldLogsForRepo(logDir, repoPath string) error
 	return nil
 }
 
-// CheckDiskSpace returns available disk space in bytes for the given directory
+// CheckDiskSpace returns available disk space in bytes for the given directory.
+// Implementation is platform-specific (see cleanup_unix.go, cleanup_windows.go).
 func (m *LogCleanupManager) CheckDiskSpace(logDir string) (int64, error) {
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs(logDir, &stat); err != nil {
-		return 0, fmt.Errorf("getting disk usage: %w", err)
-	}
-
-	// Available space = block size * available blocks
-	availableBytes := int64(stat.Bavail) * int64(stat.Bsize)
-	return availableBytes, nil
+	return checkDiskSpace(logDir)
 }
 
 // cleanupLoop runs the periodic cleanup process

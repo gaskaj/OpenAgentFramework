@@ -28,9 +28,11 @@ type AuthContext struct {
 
 // OrgContext holds the resolved organization info.
 type OrgContext struct {
-	OrgID uuid.UUID
-	Slug  string
-	Role  string
+	OrgID     uuid.UUID
+	Slug      string
+	Role      string
+	AgentName string
+	AgentType string
 }
 
 // RequireAuth is middleware that validates JWT tokens from the Authorization header.

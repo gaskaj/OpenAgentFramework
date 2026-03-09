@@ -3,12 +3,18 @@
 BINARY := agentctl
 PKG := ./...
 INTEGRATION_PKG := ./internal/integration/...
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS := -X github.com/gaskaj/OpenAgentFramework/internal/version.Version=$(VERSION) \
+           -X github.com/gaskaj/OpenAgentFramework/internal/version.Commit=$(COMMIT) \
+           -X github.com/gaskaj/OpenAgentFramework/internal/version.BuildDate=$(BUILD_DATE)
 
 build:
-	go build -o bin/$(BINARY) ./cmd/agentctl
+	go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY) ./cmd/agentctl
 
 build-controlplane:
-	go build -o bin/controlplane ./cmd/controlplane
+	go build -ldflags "$(LDFLAGS)" -o bin/controlplane ./cmd/controlplane
 
 build-all: build build-controlplane
 

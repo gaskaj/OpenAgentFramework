@@ -25,7 +25,7 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // Parse version information from response headers
-    const versionInfo: VersionResponse = parseVersionResponse(response.headers);
+    const versionInfo: VersionResponse = parseVersionResponse(response.headers as Record<string, string>);
     
     // Log deprecation warnings
     if (versionInfo.isDeprecated) {

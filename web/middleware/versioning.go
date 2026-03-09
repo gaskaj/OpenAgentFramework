@@ -181,7 +181,7 @@ func (vm *VersionMiddleware) addDeprecationWarning(w http.ResponseWriter, versio
 	
 	if version.SunsetAt != nil {
 		w.Header().Set("Sunset", version.SunsetAt.Format(time.RFC1123))
-		w.Header().Set("Link", `</docs/webui/api-versioning.md>; rel="deprecation"; type="text/html"`)
+		w.Header().Set("Link", `</docs/controlplane/api-versioning.md>; rel="deprecation"; type="text/html"`)
 	}
 }
 
@@ -206,13 +206,13 @@ func (vm *VersionMiddleware) respondUnsupportedVersion(w http.ResponseWriter, ve
 func (vm *VersionMiddleware) respondSunsetVersion(w http.ResponseWriter, version string, sunsetAt time.Time) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Sunset", sunsetAt.Format(time.RFC1123))
-	w.Header().Set("Link", `</docs/webui/api-versioning.md>; rel="successor-version"; type="text/html"`)
+	w.Header().Set("Link", `</docs/controlplane/api-versioning.md>; rel="successor-version"; type="text/html"`)
 	w.WriteHeader(http.StatusGone)
 	fmt.Fprintf(w, `{
 		"error": "api_version_sunset",
 		"message": "API version %q was sunset on %s",
 		"sunset_date": "%s",
-		"migration_guide": "/docs/webui/api-versioning.md"
+		"migration_guide": "/docs/controlplane/api-versioning.md"
 	}`, version, sunsetAt.Format("2006-01-02"), sunsetAt.Format(time.RFC3339))
 }
 

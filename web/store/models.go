@@ -103,6 +103,8 @@ type APIKey struct {
 	KeyHash   string     `json:"-"`
 	KeyPrefix string     `json:"key_prefix"`
 	Scopes    []string   `json:"scopes"`
+	AgentType string     `json:"agent_type"`
+	AgentName string     `json:"agent_name"`
 	LastUsed  *time.Time `json:"last_used,omitempty"`
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 	Revoked   bool       `json:"revoked"`

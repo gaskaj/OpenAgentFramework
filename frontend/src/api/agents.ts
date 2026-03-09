@@ -40,3 +40,26 @@ export async function updateAgent(
 export async function deleteAgent(orgSlug: string, agentId: string): Promise<void> {
   await apiClient.delete(`/orgs/${orgSlug}/agents/${agentId}`);
 }
+
+export interface ProvisionResponse {
+  agent: Agent;
+  api_key: {
+    id: string;
+    key_prefix: string;
+    agent_type: string;
+    agent_name: string;
+  };
+  key: string;
+}
+
+export async function provisionAgent(
+  orgSlug: string,
+  agentType: string,
+  name?: string,
+): Promise<ProvisionResponse> {
+  const { data } = await apiClient.post<ProvisionResponse>(
+    `/orgs/${orgSlug}/agents/provision`,
+    { agent_type: agentType, ...(name ? { name } : {}) },
+  );
+  return data;
+}

@@ -73,10 +73,6 @@ func New(cfg Config) (*Reporter, error) {
 	if cfg.APIKey == "" {
 		return nil, fmt.Errorf("API key is required")
 	}
-	if cfg.AgentName == "" {
-		return nil, fmt.Errorf("agent name is required")
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	r := &Reporter{

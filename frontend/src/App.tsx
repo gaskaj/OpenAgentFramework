@@ -11,6 +11,9 @@ import { OrgSettingsPage } from '@/pages/OrgSettingsPage';
 import { ApiKeysPage } from '@/pages/ApiKeysPage';
 import { AuditLogPage } from '@/pages/AuditLogPage';
 import { InviteAcceptPage } from '@/pages/InviteAcceptPage';
+import { ConfigPage } from '@/pages/ConfigPage';
+import { AgentConfigOverridePage } from '@/pages/AgentConfigOverridePage';
+import { CreateAgentPage } from '@/pages/CreateAgentPage';
 
 function ProtectedRoute() {
   const token = useAuthStore((s) => s.token);
@@ -32,7 +35,10 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/agents" element={<AgentListPage />} />
+          <Route path="/agents/new" element={<CreateAgentPage />} />
           <Route path="/agents/:agentId" element={<AgentDetailPage />} />
+          <Route path="/agents/:agentId/config" element={<AgentConfigOverridePage />} />
+          <Route path="/config" element={<ConfigPage />} />
           <Route path="/events" element={<EventFeedPage />} />
           <Route path="/settings" element={<OrgSettingsPage />} />
           <Route path="/settings/api-keys" element={<ApiKeysPage />} />

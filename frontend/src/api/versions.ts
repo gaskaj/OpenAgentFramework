@@ -267,7 +267,7 @@ export function validateVersion(
         `API version ${version} was sunset on ${deprecationInfo.sunsetAt.toDateString()}`,
         version,
         deprecationInfo.sunsetAt,
-        '/docs/webui/api-versioning.md',
+        '/docs/controlplane/api-versioning.md',
       );
     }
     
@@ -277,7 +277,7 @@ export function validateVersion(
       version,
       deprecationInfo?.deprecatedAt,
       deprecationInfo?.sunsetAt,
-      '/docs/webui/api-versioning.md',
+      '/docs/controlplane/api-versioning.md',
     );
   }
 }

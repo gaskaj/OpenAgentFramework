@@ -35,11 +35,27 @@ func (h *APIKeyHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Name string `json:"name"`
+		AgentType string `json:"agent_type"`
+		Name      string `json:"name"` // optional override for agent_name
 	}
-	if err := decodeJSON(r, &req); err != nil || req.Name == "" {
-		respondError(w, http.StatusBadRequest, "name is required")
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
+	}
+	if req.AgentType == "" {
+		req.AgentType = "developer"
+	}
+
+	// Auto-generate agent name: {agent_type}-{XX}
+	agentName := req.Name
+	if agentName == "" {
+		count, err := h.apikeys.CountByAgentType(r.Context(), orgCtx.OrgID, req.AgentType)
+		if err != nil {
+			h.logger.Error("counting agents by type", "error", err)
+			respondError(w, http.StatusInternalServerError, "failed to generate agent name")
+			return
+		}
+		agentName = fmt.Sprintf("%s-%02d", req.AgentType, count+1)
 	}
 
 	// Generate random key
@@ -60,10 +76,12 @@ func (h *APIKeyHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	apiKey := &store.APIKey{
 		OrgID:     orgCtx.OrgID,
 		CreatedBy: authCtx.UserID,
-		Name:      req.Name,
+		Name:      agentName,
 		KeyHash:   hashStr,
 		KeyPrefix: prefix,
 		Scopes:    []string{"agent.report"},
+		AgentType: req.AgentType,
+		AgentName: agentName,
 	}
 
 	if err := h.apikeys.Create(r.Context(), apiKey); err != nil {
