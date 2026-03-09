@@ -26,6 +26,7 @@ OpenAgentFramework turns your GitHub repository into a self-improving codebase. 
 ### Why OpenAgentFramework?
 
 - **Zero-friction deployment** — Create an agent in the control plane UI, download the binary, paste your config, and run. Your agent starts picking up issues within minutes.
+- **Run anywhere with ngrok** — Built-in ngrok tunnel support exposes your local control plane to the internet. Agents on remote machines, cloud VMs, or CI runners connect back securely — no port forwarding, firewall rules, or cloud hosting required. Just paste your authtoken in Settings and go.
 - **Centralized management** — Configure, monitor, and control all your agents from a single web dashboard. No more editing YAML files on individual machines.
 - **Human-in-the-loop by design** — Agents create pull requests, not direct commits. You review, comment, and merge on your terms.
 - **Smart decomposition** — Complex issues are automatically broken down into manageable subtasks. The agent estimates complexity and splits work when needed.
@@ -117,6 +118,18 @@ docker compose up -d
 ```
 
 This starts PostgreSQL, the control plane API server, and the React frontend. Open **http://localhost:5173** to access the UI.
+
+#### 1b. (Optional) Enable Public Access with ngrok
+
+Want to run agents on remote machines? Enable the built-in ngrok tunnel:
+
+1. Sign up at [ngrok.com](https://dashboard.ngrok.com/signup) (free tier is fine)
+2. Go to **Settings** in the control plane UI (`http://localhost:5173/settings`)
+3. Paste your [ngrok authtoken](https://dashboard.ngrok.com/get-started/your-authtoken) and click **Save**
+
+A public URL like `https://random-name.ngrok-free.dev` appears within seconds. Use this URL as the `controlplane.url` in agent configs on any machine — no port forwarding or cloud deployment needed.
+
+> **Full guide:** [ngrok Tunnel Guide](docs/controlplane/ngrok-tunnel.md)
 
 #### 2. Create Your Organization
 
@@ -353,6 +366,7 @@ Agents learn from your codebase over time. After each successful implementation,
 | [Control Plane Architecture](docs/controlplane/controlplane-architecture.md) | Multi-tenant design, WebSocket, auth |
 | [API Reference](docs/controlplane/controlplane-api-reference.md) | REST API endpoints for the control plane |
 | [Deployment Guide](docs/controlplane/controlplane-deployment.md) | Docker Compose deployment and configuration |
+| [ngrok Tunnel Guide](docs/controlplane/ngrok-tunnel.md) | Expose your control plane to the internet with ngrok |
 | [API Versioning](docs/controlplane/api-versioning.md) | API versioning strategy and deprecation |
 
 ### Observability & Testing

@@ -17,7 +17,13 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 
 FROM alpine:3.20
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata curl unzip && \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then NGROK_ARCH="arm64"; elif [ "$ARCH" = "x86_64" ]; then NGROK_ARCH="amd64"; else NGROK_ARCH="amd64"; fi && \
+    curl -sL "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-${NGROK_ARCH}.tgz" -o /tmp/ngrok.tgz && \
+    tar xzf /tmp/ngrok.tgz -C /usr/local/bin && \
+    rm /tmp/ngrok.tgz && \
+    apk del curl unzip
 WORKDIR /app
 COPY --from=builder /app/controlplane .
 

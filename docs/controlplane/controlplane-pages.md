@@ -226,12 +226,20 @@ Manage API keys used by agents to authenticate with the control plane:
 
 ![Organization Settings](screenshots/org-settings.png)
 
-Manage organization profile, team, and invitations:
+Manage organization profile, public tunnel, team, and invitations:
 
 - **Organization Details**:
   - Edit organization name
   - View slug (read-only, auto-generated)
   - Save button with success feedback
+- **Public Tunnel (ngrok)**:
+  - Authtoken input — paste your [ngrok authtoken](https://dashboard.ngrok.com/get-started/your-authtoken), persisted to the database
+  - Save/Clear buttons for token management
+  - Toggle switch to enable/disable the tunnel (appears after token is configured)
+  - Live status with green pulse indicator when tunnel is active
+  - Public URL display with copy-to-clipboard and open-in-browser buttons
+  - Link to ngrok dashboard for new users
+  - See [ngrok Tunnel Guide](ngrok-tunnel.md) for full details
 - **Members List**:
   - Each member shows name and email
   - Role selector dropdown: Owner, Admin, Member, Viewer

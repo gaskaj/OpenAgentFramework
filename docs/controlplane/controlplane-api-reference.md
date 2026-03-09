@@ -125,6 +125,18 @@ Each API key is bound to an `agent_type` and `agent_name`. The agent name is der
 |--------|------|-------------|
 | GET | `/orgs/{orgSlug}/audit` | Query audit logs (filter: action, user, resource_type, since, until) |
 
+## Tunnel Management
+
+Manage the built-in ngrok tunnel for public access. All endpoints require JWT auth.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/tunnel` | Get tunnel status (enabled, public_url, error, has_auth_token) |
+| POST | `/tunnel` | Toggle tunnel on/off: `{ "enabled": true\|false }` |
+| PUT | `/tunnel/token` | Save or clear ngrok authtoken: `{ "auth_token": "..." }` |
+
+Saving a token automatically starts the tunnel. Saving an empty string clears the token and stops the tunnel. See [ngrok Tunnel Guide](ngrok-tunnel.md) for setup instructions.
+
 ## Agent Ingestion (API Key Auth)
 
 These endpoints use API key authentication (`Authorization: Bearer oaf_...`). The agent identity (name, type) is derived from the API key — no `agent_name` field is needed in request bodies.

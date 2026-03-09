@@ -16,6 +16,16 @@ docker compose up -d
 
 This starts PostgreSQL, the control plane API (port 8080), and the frontend (port 5173).
 
+### Exposing to the Internet with ngrok
+
+Need agents on remote machines to reach your local control plane? The built-in ngrok integration creates a secure public tunnel with zero network configuration:
+
+1. Open `http://localhost:5173/settings`
+2. Paste your [ngrok authtoken](https://dashboard.ngrok.com/get-started/your-authtoken)
+3. Click **Save** — the public URL appears within seconds
+
+Use this URL as the `controlplane.url` in agent configs on any machine. See [ngrok Tunnel Guide](ngrok-tunnel.md) for full details.
+
 ### Manual Development Setup
 
 1. Start PostgreSQL:
@@ -58,6 +68,7 @@ Frontend runs on http://localhost:5173, proxying API requests to http://localhos
 | `AZURE_TENANT_ID` | No | Azure AD tenant ID |
 | `AZURE_CLIENT_ID` | No | Azure AD client ID |
 | `AZURE_CLIENT_SECRET` | No | Azure AD client secret |
+| `NGROK_TUNNEL_TARGET` | No | Override tunnel target address (default: `frontend:80` in Docker) |
 
 ### Database Migrations
 
