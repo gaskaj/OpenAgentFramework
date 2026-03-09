@@ -15,6 +15,7 @@ import (
 	"github.com/gaskaj/OpenAgentFramework/web/router"
 	"github.com/gaskaj/OpenAgentFramework/web/server"
 	"github.com/gaskaj/OpenAgentFramework/web/store"
+	"github.com/gaskaj/OpenAgentFramework/web/tunnel"
 	"github.com/gaskaj/OpenAgentFramework/web/ws"
 )
 
@@ -78,8 +79,23 @@ func main() {
 		authHandler.RegisterProvider("azure", auth.NewAzureProvider(cfg.Auth.Azure))
 	}
 
+	// Initialize ngrok tunnel manager.
+	// The tunnel targets the frontend (which proxies /api/ to us), so the
+	// public URL serves both the SPA and the API.  Inside Docker Compose the
+	// frontend container is reachable at "frontend:80"; when running locally
+	// it is typically "localhost:5173".
+	tunnelTarget := os.Getenv("NGROK_TUNNEL_TARGET")
+	if tunnelTarget == "" {
+		tunnelTarget = "frontend:80" // Docker Compose default
+	}
+	tunnelMgr := tunnel.NewManager(tunnelTarget, logger)
+
 	// Create router
-	r := router.New(stores, jwtMgr, hub, authHandler, cfg.Versioning, logger, cfg.CORS.AllowedOrigins)
+	r := router.New(stores, jwtMgr, hub, authHandler, cfg.Versioning, logger, cfg.CORS.AllowedOrigins, tunnelMgr)
+
+	// Load persisted ngrok authtoken from DB and start tunnel if configured
+	tunnelHandler := handler.NewTunnelHandler(tunnelMgr, stores.Settings, logger)
+	tunnelHandler.LoadAndStart(ctx)
 
 	// Create and start server
 	srv := server.New(
@@ -107,6 +123,7 @@ func main() {
 		}
 	case <-ctx.Done():
 		logger.Info("shutdown signal received")
+		tunnelMgr.Stop()
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 		defer shutdownCancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {

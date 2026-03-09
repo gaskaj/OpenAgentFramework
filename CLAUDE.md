@@ -48,6 +48,7 @@ web/                          Control plane backend (Go + chi + pgx)
   auth/                       JWT, bcrypt, OAuth providers
   middleware/                 Auth, API key, logging middleware
   router/                     Chi router with full route tree
+  tunnel/                     ngrok tunnel lifecycle management
   ws/                         WebSocket hub for real-time event streaming
   config/                     Server config (Viper)
   migrate/                    SQL migrations (embedded)
@@ -182,6 +183,7 @@ Key config sections: `github`, `claude`, `agents`, `state`, `logging`, `creativi
 - [docs/controlplane/controlplane-architecture.md](docs/controlplane/controlplane-architecture.md) — Control plane architecture, multi-tenant design
 - [docs/controlplane/controlplane-api-reference.md](docs/controlplane/controlplane-api-reference.md) — REST API endpoints for the control plane
 - [docs/controlplane/controlplane-deployment.md](docs/controlplane/controlplane-deployment.md) — Docker Compose deployment, configuration
+- [docs/controlplane/ngrok-tunnel.md](docs/controlplane/ngrok-tunnel.md) — Public access via built-in ngrok tunnel
 
 ## Control Plane Testing Requirements
 

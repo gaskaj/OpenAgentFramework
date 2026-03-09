@@ -26,6 +26,7 @@ type PostgresStore struct {
 	Invitations  *PgInvitationStore
 	AuditLogs    *PgAuditStore
 	Configs      *PgConfigStore
+	Settings     *PgSettingsStore
 }
 
 // NewPostgresStore creates a new PostgresStore with a connection pool.
@@ -89,6 +90,7 @@ func NewPostgresStore(ctx context.Context, cfg webconfig.DatabaseConfig, logger 
 	s.Invitations = &PgInvitationStore{pool: pool, monitor: queryMonitor}
 	s.AuditLogs = &PgAuditStore{pool: pool, monitor: queryMonitor}
 	s.Configs = &PgConfigStore{pool: pool, monitor: queryMonitor}
+	s.Settings = &PgSettingsStore{pool: pool, monitor: queryMonitor}
 
 	return s, nil
 }

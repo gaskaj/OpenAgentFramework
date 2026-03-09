@@ -13,6 +13,7 @@ import (
 	"github.com/gaskaj/OpenAgentFramework/web/handler"
 	"github.com/gaskaj/OpenAgentFramework/web/middleware"
 	"github.com/gaskaj/OpenAgentFramework/web/store"
+	"github.com/gaskaj/OpenAgentFramework/web/tunnel"
 	"github.com/gaskaj/OpenAgentFramework/web/ws"
 )
 
@@ -25,6 +26,7 @@ func New(
 	versionConfig config.VersionConfig,
 	logger *slog.Logger,
 	allowedOrigins []string,
+	tunnelMgr *tunnel.Manager,
 ) http.Handler {
 	r := chi.NewRouter()
 
@@ -73,6 +75,7 @@ func New(
 	openAPIHandler := handler.NewOpenAPIHandler()
 	configHandler := handler.NewConfigHandler(stores.Configs, stores.Agents, logger)
 	releaseHandler := handler.NewReleaseHandler("gaskaj", "OpenAgentFramework", logger)
+	tunnelHandler := handler.NewTunnelHandler(tunnelMgr, stores.Settings, logger)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// OpenAPI specification (public)
@@ -111,6 +114,11 @@ func New(
 		// Protected routes (JWT auth)
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireAuth(jwtMgr))
+
+			// Tunnel management (not org-scoped)
+			r.Get("/tunnel", tunnelHandler.HandleStatus)
+			r.Post("/tunnel", tunnelHandler.HandleToggle)
+			r.Put("/tunnel/token", tunnelHandler.HandleSaveToken)
 
 			// Organization CRUD
 			r.Post("/orgs", orgHandler.HandleCreate)
