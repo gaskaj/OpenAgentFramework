@@ -71,6 +71,33 @@ The Orchestrator runs agents concurrently. The Developer agent polls GitHub for 
 
 **Workflow**: `idle → claim → workspace → analyze → [decompose] → implement → commit → PR → validation → review → complete`
 
+## Build & Release Protocol
+
+**MANDATORY**: Every time you build binaries (via `make build`, `make build-all`, `docker compose build`, etc.), you MUST also cut a new release. This applies to all builds, not just explicit release requests.
+
+### Steps
+
+1. **Determine next version**: Query the latest GitHub release tag with `gh release list --limit 1` or `git tag --list 'v*' --sort=-v:refname | head -1`. Increment the **patch** version (e.g., v0.1.0 → v0.1.1, v0.1.5 → v0.1.6).
+2. **Build locally**: Run `make build && make build-controlplane` to verify the code compiles.
+3. **Rebuild Docker**: Run `docker compose build` (or `docker compose build --no-cache` if needed) to update the running stack.
+4. **Commit all changes**: Stage and commit any pending changes.
+5. **Tag and push**: Create the new version tag and push it along with the branch:
+   ```bash
+   git tag v<NEW_VERSION>
+   git push origin <branch> --tags
+   ```
+6. **Verify**: The `.github/workflows/release.yml` workflow will automatically build cross-platform binaries (linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64) and create a GitHub Release with all artifacts.
+
+### Version injection
+
+Binaries are stamped at build time via `-ldflags` (see `Makefile`). The `internal/version` package exposes `Version`, `Commit`, and `BuildDate`. The release workflow injects the tag name as the version.
+
+### Important
+
+- Never skip the release step when building. Every build = every release.
+- Always increment patch from the **latest published tag**, not from a hardcoded value.
+- The release workflow builds `.exe` for Windows automatically — you do not need to cross-compile locally.
+
 ## Key Patterns and Conventions
 
 - **Dependency injection**: All components receive `agent.Dependencies` (Config, GitHub, Claude, Store, Logger, Metrics, ErrorManager)
