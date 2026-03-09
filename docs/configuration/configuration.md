@@ -4,9 +4,25 @@ Configuration is loaded from a YAML file using Viper. Environment variables are 
 
 > 📖 **Complete Reference**: See [Configuration Schema Reference](configuration-schema.md) for the complete documentation of all configuration options, defaults, validation rules, and examples.
 
-## Quick Start
+## Remote Configuration (Recommended)
 
-For detailed configuration reference, validation rules, and examples, see the [Configuration Schema Reference](configuration-schema.md).
+For production deployments and fleet management, use **remote configuration** mode. Agents carry only a minimal local config and fetch all settings from the control plane control plane. See [Remote Configuration](remote-configuration.md) for full details.
+
+```yaml
+# Minimal agent config — all other settings managed via control plane
+controlplane:
+  enabled: true
+  url: "http://controlplane:8080"
+  api_key: "${OAF_API_KEY}"
+  config_mode: "remote"
+  config_poll_interval: "30s"
+```
+
+The agent name and type are derived from the API key (set when creating the agent in the control plane). No `agent_name` is needed locally.
+
+## Local Configuration (Development/Testing)
+
+For local development or running without a control plane, use the full config file. See below for the complete YAML reference.
 
 ## Loading
 
@@ -406,8 +422,9 @@ The `configs/` directory contains:
 
 | File | Purpose |
 |------|---------|
+| `config.remote.yaml` | **Recommended**: Minimal remote config template (only controlplane settings) |
+| `config.example.yaml` | Full local config template with all options documented |
 | `config.yaml` | Main configuration (uses env vars, gitignored) |
-| `config.example.yaml` | Template with all options documented |
 | `logging.yaml` | Logging-specific configuration |
 | `structured_logging.yaml` | Structured logging and multi-agent observability config |
 

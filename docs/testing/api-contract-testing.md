@@ -376,6 +376,6 @@ Contract tests integrate with the existing quality assurance framework:
 
 ## Related Documentation
 
-- [API Versioning](../webui/api-versioning.md) - API version management strategies
+- [API Versioning](../controlplane/api-versioning.md) - API version management strategies
 - [Testing Strategy](testing-strategy.md) - Overall testing approach
-- [WebUI Architecture](../webui/webui-architecture.md) - Frontend/backend architecture
+- [Control Plane Architecture](../controlplane/controlplane-architecture.md) - Frontend/backend architecture

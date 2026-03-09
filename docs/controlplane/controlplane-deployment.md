@@ -1,4 +1,4 @@
-# WebUI Deployment
+# Control Plane Deployment
 
 ## Development Setup
 
@@ -69,19 +69,26 @@ Migrations run automatically on server startup. To run manually:
 
 ### Connecting Agents
 
-1. Register an organization and create an API key in the UI
-2. Add control plane config to agent's `config.yaml`:
+1. Register an organization in the UI
+2. Use **Create New Agent** on the Agents page to provision an agent and get its API key
+3. Configure the global settings for the agent type via the **Configuration** page (GitHub, Claude, etc.)
+4. Create a minimal agent config file:
 
 ```yaml
+# Recommended: remote configuration mode
 controlplane:
   enabled: true
   url: "https://your-controlplane.example.com"
   api_key: "oaf_your_api_key_here"
-  agent_name: "dev-agent-prod-1"
-  heartbeat_interval: "30s"
+  config_mode: "remote"
+  config_poll_interval: "30s"
 ```
 
-3. Restart the agent - it will register and begin reporting events
+The agent name and type are derived from the API key — no `agent_name` is needed locally. All other configuration is fetched from the control plane.
+
+5. Start the agent: `./bin/agentctl start --config config.yaml`
+
+For local development without a control plane, use `config_mode: "local"` with a full config file (see `configs/config.example.yaml`).
 
 ### Health Check
 

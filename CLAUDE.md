@@ -13,7 +13,7 @@ make fmt                      # gofmt -s -w .
 agentctl start --config configs/config.yaml
 agentctl status --config configs/config.yaml
 
-# Control Plane + WebUI
+# Control Plane
 make build-controlplane       # Build → bin/controlplane
 docker compose up             # Start full stack (postgres + controlplane + frontend)
 
@@ -61,7 +61,7 @@ frontend/                     React + TypeScript + Vite control plane UI
   src/api/                    Axios API clients
   src/components/             Reusable UI components
   e2e/                        Playwright e2e tests
-configs/                      YAML config files (config.yaml, config.example.yaml, controlplane.example.yaml)
+configs/                      YAML config files (config.remote.yaml, config.example.yaml, controlplane.example.yaml)
 docs/                         Detailed documentation (see links below)
 ```
 
@@ -131,11 +131,11 @@ From `internal/developer/prompts.go`:
 
 ## Configuration
 
-Required env vars: `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`
+**Remote mode (recommended for production):** Agents need only `controlplane.url`, `controlplane.api_key`, and `config_mode: "remote"`. All other settings are managed centrally via the control plane. Agent name/type are derived from the API key. See `configs/config.remote.yaml` and [docs/configuration/remote-configuration.md](docs/configuration/remote-configuration.md).
 
-Config file: `configs/config.yaml` — see [docs/configuration/configuration.md](docs/configuration/configuration.md) for full reference.
+**Local mode (development/testing):** Requires `GITHUB_TOKEN`, `ANTHROPIC_API_KEY` env vars and a full config file. See `configs/config.example.yaml` and [docs/configuration/configuration.md](docs/configuration/configuration.md).
 
-Key sections: `github`, `claude`, `agents`, `state`, `logging`, `creativity`, `decomposition`, `memory`, `error_handling`
+Key config sections: `github`, `claude`, `agents`, `state`, `logging`, `creativity`, `decomposition`, `memory`, `error_handling`, `controlplane`
 
 ## Deep-Dive Documentation
 
@@ -146,15 +146,17 @@ Key sections: `github`, `claude`, `agents`, `state`, `logging`, `creativity`, `d
 - [docs/guides/github-integration.md](docs/guides/github-integration.md) — Client interface, poller, labels, branches, PRs
 - [docs/guides/code-conventions.md](docs/guides/code-conventions.md) — Error handling, naming, interfaces, logging, testing
 - [docs/guides/repository-memory.md](docs/guides/repository-memory.md) — Persistent repo memory system for Claude efficiency
+- [docs/guides/release-pipeline.md](docs/guides/release-pipeline.md) — Release workflow, version injection, binary distribution
 - [docs/configuration/configuration.md](docs/configuration/configuration.md) — Full YAML reference, env vars, defaults, validation
+- [docs/configuration/remote-configuration.md](docs/configuration/remote-configuration.md) — Remote config mode, three-tier merge, control plane management
 - [docs/observability/structured-logging.md](docs/observability/structured-logging.md) — Observability, correlation IDs, metrics
 - [docs/testing/integration-testing.md](docs/testing/integration-testing.md) — Integration test suite, mock infrastructure, CI pipeline
-- [docs/webui/webui-pages.md](docs/webui/webui-pages.md) — All WebUI pages with screenshots, features, and usage
-- [docs/webui/webui-architecture.md](docs/webui/webui-architecture.md) — Control plane WebUI architecture, multi-tenant design
-- [docs/webui/webui-api-reference.md](docs/webui/webui-api-reference.md) — REST API endpoints for the control plane
-- [docs/webui/webui-deployment.md](docs/webui/webui-deployment.md) — Docker Compose deployment, configuration
+- [docs/controlplane/controlplane-pages.md](docs/controlplane/controlplane-pages.md) — All control plane pages with screenshots, features, and usage
+- [docs/controlplane/controlplane-architecture.md](docs/controlplane/controlplane-architecture.md) — Control plane architecture, multi-tenant design
+- [docs/controlplane/controlplane-api-reference.md](docs/controlplane/controlplane-api-reference.md) — REST API endpoints for the control plane
+- [docs/controlplane/controlplane-deployment.md](docs/controlplane/controlplane-deployment.md) — Docker Compose deployment, configuration
 
-## WebUI Testing Requirements
+## Control Plane Testing Requirements
 
 **MANDATORY**: Any change to frontend code, backend API handlers, or shared types (`pkg/apitypes`) MUST pass all existing frontend tests before being committed. This applies to both human and agent-authored changes.
 
@@ -196,13 +198,13 @@ When modifying UI components or API endpoints:
 - Avoid duplicating code in the instructions and reference the files the documentation is describing
 - Documentation MUST be added with the Issue and PR of the new feature
 
-### WebUI Documentation Requirements
+### Control Plane Documentation Requirements
 
-**MANDATORY**: Any change to the WebUI (new pages, modified pages, new features, changed layouts) MUST update the WebUI documentation:
+**MANDATORY**: Any change to the control plane (new pages, modified pages, new features, changed layouts) MUST update the control plane documentation:
 
-1. **Update `docs/webui/webui-pages.md`** — Add or modify the page description, features list, and usage instructions for any changed or new page
+1. **Update `docs/controlplane/controlplane-pages.md`** — Add or modify the page description, features list, and usage instructions for any changed or new page
 2. **Regenerate screenshots** — Run `cd frontend && npx playwright test e2e/screenshots.spec.ts` to capture updated screenshots after UI changes. If adding a new page, add a screenshot step to `frontend/e2e/screenshots.spec.ts`
-3. **Update `docs/webui/webui-api-reference.md`** if new API endpoints are added or existing ones change
-4. **Update `docs/webui/webui-architecture.md`** if architectural patterns change (new stores, hooks, components)
+3. **Update `docs/controlplane/controlplane-api-reference.md`** if new API endpoints are added or existing ones change
+4. **Update `docs/controlplane/controlplane-architecture.md`** if architectural patterns change (new stores, hooks, components)
 
-Screenshots are stored in `docs/webui/screenshots/` and referenced from `docs/webui/webui-pages.md`. The Playwright screenshot test at `frontend/e2e/screenshots.spec.ts` automates capture against the running stack (`docker compose up`).
+Screenshots are stored in `docs/controlplane/screenshots/` and referenced from `docs/controlplane/controlplane-pages.md`. The Playwright screenshot test at `frontend/e2e/screenshots.spec.ts` automates capture against the running stack (`docker compose up`).

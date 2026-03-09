@@ -26,10 +26,10 @@ describe('ApiKeysPage', () => {
     expect(screen.getByText('API Keys')).toBeInTheDocument();
   });
 
-  it('renders create form', () => {
+  it('renders create form with agent type selector', () => {
     render(<ApiKeysPage />);
     expect(screen.getByText('Create New Key')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Key name (e.g., production-agent)')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Custom name/)).toBeInTheDocument();
   });
 
   it('renders active keys section', () => {

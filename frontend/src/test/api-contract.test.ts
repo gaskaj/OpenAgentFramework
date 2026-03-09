@@ -93,7 +93,7 @@ describe('API Contract Validation', () => {
             tags: [],
             config_snapshot: {},
             last_heartbeat: '2023-01-01T12:00:00Z',
-            registered_at: '2023-01-01T12:00:00Z',
+            created_at: '2023-01-01T12:00:00Z',
             updated_at: '2023-01-01T12:00:00Z',
           },
         ],
@@ -229,7 +229,7 @@ describe('API Contract Validation', () => {
             tags: [],
             config_snapshot: {},
             last_heartbeat: '2023-01-01T12:00:00Z',
-            registered_at: '2023-01-01T12:00:00Z',
+            created_at: '2023-01-01T12:00:00Z',
             updated_at: '2023-01-01T12:00:00Z',
           },
         },
@@ -309,10 +309,10 @@ describe('API Contract Validation', () => {
         },
       };
 
-      mockedAxios.get.mockResolvedValueOnce(mockResponse);
+      (mockedAxios.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
       // Import the client to trigger interceptor registration
-      const apiClient = await import('@/api/client');
+      await import('@/api/client');
 
       // Make a request - this should trigger the validation interceptor
       await expect(mockedAxios.get('/api/v1/healthz')).resolves.not.toThrow();
@@ -398,7 +398,7 @@ describe('Endpoint Coverage', () => {
     ];
 
     // Import the validation module to access the schema registry
-    import('@/api/validation').then((module) => {
+    import('@/api/validation').then((_module) => {
       // Note: In a real implementation, we'd expose the ENDPOINT_SCHEMAS
       // for testing purposes. For now, we verify through behavior.
       

@@ -1,0 +1,15 @@
+# Minimal remote configuration for OpenAgentFramework agents.
+#
+# When config_mode is "remote", the agent fetches all other settings
+# (GitHub, Claude, creativity, decomposition, etc.) from the control
+# plane. Only the fields below are needed locally.
+#
+# The agent name and type are determined by the API key — set when
+# creating the key in the control plane (Settings → API Keys).
+
+controlplane:
+  enabled: true
+  url: "http://localhost:8080"
+  api_key: "${OAF_API_KEY}"
+  config_mode: "remote"
+  config_poll_interval: "30s"

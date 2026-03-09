@@ -8,11 +8,12 @@ export async function listAPIKeys(orgSlug: string): Promise<APIKey[]> {
 
 export async function createAPIKey(
   orgSlug: string,
-  name: string,
+  agentType: string,
+  name?: string,
 ): Promise<APIKeyCreateResponse> {
   const { data } = await apiClient.post<APIKeyCreateResponse>(
     `/orgs/${orgSlug}/apikeys`,
-    { name },
+    { agent_type: agentType, ...(name ? { name } : {}) },
   );
   return data;
 }

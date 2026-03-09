@@ -1,21 +1,6 @@
 import { AxiosResponse } from 'axios';
 import { z } from 'zod';
-import type { 
-  User, 
-  Organization, 
-  Agent, 
-  AgentEvent, 
-  APIKey, 
-  Invitation,
-  AuditLog,
-  PaginatedResponse,
-  ApiError,
-  EventType,
-  Severity,
-  AgentStatus,
-  OrgRole,
-  InvitationStatus 
-} from '@/types';
+import type { ApiError } from '@/types';
 
 // Zod schemas for runtime validation matching TypeScript types
 
@@ -205,11 +190,10 @@ export function validateApiResponse(response: AxiosResponse): void {
     schema.parse(response.data);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new Error(
-        `API contract violation for ${endpoint}: ${error.errors
-          .map(e => `${e.path.join('.'): ${e.message}`)
-          .join(', ')}`
-      );
+      const details = error.errors
+        .map(function(e) { return e.path.join('.') + ': ' + e.message; })
+        .join(', ');
+      throw new Error('API contract violation for ' + endpoint + ': ' + details);
     }
     throw error;
   }
@@ -217,7 +201,7 @@ export function validateApiResponse(response: AxiosResponse): void {
 
 /**
  * Extracts a pattern from a URL for schema matching
- * Converts /api/v1/orgs/123/agents to /api/v1/orgs/*/agents
+ * Converts /api/v1/orgs/123/agents to /api/v1/orgs/{wildcard}/agents
  */
 function extractEndpointPattern(url: string): string {
   // Remove query parameters

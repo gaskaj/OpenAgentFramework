@@ -33,10 +33,10 @@ OpenAgentFramework provides agent personas — Developer, QA, and Development Ma
 | [testing-strategy.md](docs/testing/testing-strategy.md) | Test strategy and patterns |
 | [integration-testing.md](docs/testing/integration-testing.md) | Integration test suite, CI pipeline |
 | [test-coverage.md](docs/testing/test-coverage.md) | Coverage reporting and quality gates |
-| **WebUI / Control Plane** | |
-| [webui-architecture.md](docs/webui/webui-architecture.md) | Control plane architecture, multi-tenant design |
-| [webui-api-reference.md](docs/webui/webui-api-reference.md) | REST API endpoints |
-| [webui-deployment.md](docs/webui/webui-deployment.md) | Docker Compose deployment |
+| **Control Plane** | |
+| [controlplane-architecture.md](docs/controlplane/controlplane-architecture.md) | Control plane architecture, multi-tenant design |
+| [controlplane-api-reference.md](docs/controlplane/controlplane-api-reference.md) | REST API endpoints |
+| [controlplane-deployment.md](docs/controlplane/controlplane-deployment.md) | Docker Compose deployment |
 
 ## Architecture
 

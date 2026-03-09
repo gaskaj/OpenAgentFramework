@@ -115,7 +115,7 @@ Deprecation: true
 Warning: 299 - "API version v0 is deprecated"
 Deprecation-Date: 2024-01-15T00:00:00Z
 Sunset: Mon, 15 Jul 2024 00:00:00 GMT
-Link: </docs/webui/api-versioning.md>; rel="deprecation"; type="text/html"
+Link: </docs/controlplane/api-versioning.md>; rel="deprecation"; type="text/html"
 ```
 
 ## Client Integration
@@ -242,7 +242,7 @@ Events include the API version used:
   "error": "api_version_sunset",
   "message": "API version \"v0\" was sunset on 2024-07-15",
   "sunset_date": "2024-07-15T00:00:00Z",
-  "migration_guide": "/docs/webui/api-versioning.md"
+  "migration_guide": "/docs/controlplane/api-versioning.md"
 }
 ```
 

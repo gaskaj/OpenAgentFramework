@@ -18,9 +18,9 @@ function generateTestEmail(): string {
 }
 
 const TEST_PASSWORD = 'TestPassword123!';
-const SCREENSHOT_DIR = '../docs/webui/screenshots';
+const SCREENSHOT_DIR = '../docs/controlplane/screenshots';
 
-test.describe('WebUI Screenshots', () => {
+test.describe('Control Plane Screenshots', () => {
   test('capture all page screenshots', async ({ page }) => {
     // Set viewport for consistent screenshots
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -60,6 +60,41 @@ test.describe('WebUI Screenshots', () => {
     await expect(page.getByRole('heading', { name: 'Agents' })).toBeVisible();
     await page.screenshot({ path: `${SCREENSHOT_DIR}/agents.png`, fullPage: false });
 
+    // --- Create Agent Page ---
+    await page.goto('/agents/new');
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByRole('heading', { name: 'Create New Agent' })).toBeVisible();
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/create-agent.png`, fullPage: true });
+
+    // --- Provision an agent to show success screen ---
+    await page.getByRole('button', { name: 'Create Agent' }).click();
+    // Wait for provisioning response
+    await page.waitForTimeout(2000);
+    const successHeading = page.getByRole('heading', { name: 'Agent Created' });
+    if (await successHeading.isVisible()) {
+      await page.screenshot({ path: `${SCREENSHOT_DIR}/agent-created.png`, fullPage: true });
+      // Navigate to the agent detail page
+      await page.getByRole('button', { name: 'View Agent' }).click();
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `${SCREENSHOT_DIR}/agent-detail.png`, fullPage: true });
+    }
+
+    // --- Agent Config Override Page (if agent was created) ---
+    const configureLink = page.getByRole('link', { name: 'Configure' });
+    if (await configureLink.isVisible()) {
+      await configureLink.click();
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `${SCREENSHOT_DIR}/agent-config.png`, fullPage: true });
+    }
+
+    // --- Global Configuration Page ---
+    await page.goto('/config');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/config.png`, fullPage: true });
+
     // --- Event Feed Page ---
     await page.goto('/events');
     await page.waitForLoadState('networkidle');
@@ -73,7 +108,6 @@ test.describe('WebUI Screenshots', () => {
     await page.screenshot({ path: `${SCREENSHOT_DIR}/api-keys.png`, fullPage: false });
 
     // --- Create an API Key to show the modal ---
-    await page.getByPlaceholder('Key name').fill('demo-agent-key');
     await page.getByRole('button', { name: 'Create' }).click();
     // Wait for modal to appear
     await page.waitForTimeout(500);

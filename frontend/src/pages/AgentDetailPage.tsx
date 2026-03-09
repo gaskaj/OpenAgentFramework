@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2, Bot, Server, Clock, GitBranch, Tag } from 'lucide-react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, Trash2, Bot, Server, Clock, GitBranch, Tag, Settings } from 'lucide-react';
 import { useAgent } from '@/hooks/useAgents';
 import { useAuthStore } from '@/store/auth-store';
 import { deleteAgent } from '@/api/agents';
@@ -116,14 +116,23 @@ export function AgentDetailPage() {
           </div>
         </div>
 
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
-        >
-          <Trash2 className="h-4 w-4" />
-          Deregister
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/agents/${agentId}/config`}
+            className="flex items-center gap-2 rounded-lg border border-zinc-600 px-3 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-700"
+          >
+            <Settings className="h-4 w-4" />
+            Configure
+          </Link>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            Deregister
+          </button>
+        </div>
       </div>
 
       {/* Config snapshot */}

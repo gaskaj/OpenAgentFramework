@@ -1,6 +1,10 @@
 package handler
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -13,13 +17,14 @@ import (
 
 // AgentHandler handles agent management endpoints.
 type AgentHandler struct {
-	agents *store.PgAgentStore
-	logger *slog.Logger
+	agents  *store.PgAgentStore
+	apikeys *store.PgAPIKeyStore
+	logger  *slog.Logger
 }
 
 // NewAgentHandler creates a new AgentHandler.
-func NewAgentHandler(agents *store.PgAgentStore, logger *slog.Logger) *AgentHandler {
-	return &AgentHandler{agents: agents, logger: logger}
+func NewAgentHandler(agents *store.PgAgentStore, apikeys *store.PgAPIKeyStore, logger *slog.Logger) *AgentHandler {
+	return &AgentHandler{agents: agents, apikeys: apikeys, logger: logger}
 }
 
 func (h *AgentHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
@@ -146,4 +151,86 @@ func (h *AgentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+// HandleProvision creates a new agent (status "offline") and a corresponding API key.
+// Returns the agent, the API key metadata, and the raw key (shown only once).
+func (h *AgentHandler) HandleProvision(w http.ResponseWriter, r *http.Request) {
+	authCtx := middleware.GetUserFromContext(r.Context())
+	orgCtx := middleware.GetOrgFromContext(r.Context())
+	if authCtx == nil || orgCtx == nil {
+		respondError(w, http.StatusForbidden, "unauthorized")
+		return
+	}
+
+	var req struct {
+		AgentType string `json:"agent_type"`
+		Name      string `json:"name"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.AgentType == "" {
+		req.AgentType = "developer"
+	}
+
+	// Auto-generate agent name if not provided
+	agentName := req.Name
+	if agentName == "" {
+		count, err := h.apikeys.CountByAgentType(r.Context(), orgCtx.OrgID, req.AgentType)
+		if err != nil {
+			h.logger.Error("counting agents by type", "error", err)
+			respondError(w, http.StatusInternalServerError, "failed to generate agent name")
+			return
+		}
+		agentName = fmt.Sprintf("%s-%02d", req.AgentType, count+1)
+	}
+
+	// 1. Create the agent with status "offline"
+	agent := &store.Agent{
+		OrgID:     orgCtx.OrgID,
+		Name:      agentName,
+		AgentType: req.AgentType,
+		Status:    "offline",
+		Tags:      []string{},
+	}
+	if err := h.agents.Register(r.Context(), agent); err != nil {
+		h.logger.Error("provisioning agent", "error", err)
+		respondError(w, http.StatusInternalServerError, "failed to create agent")
+		return
+	}
+
+	// 2. Create an API key bound to this agent
+	keyBytes := make([]byte, 32)
+	if _, err := rand.Read(keyBytes); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to generate key")
+		return
+	}
+	rawKey := fmt.Sprintf("oaf_%s", hex.EncodeToString(keyBytes))
+	hash := sha256.Sum256([]byte(rawKey))
+	hashStr := hex.EncodeToString(hash[:])
+	prefix := hex.EncodeToString(keyBytes)[:8]
+
+	apiKey := &store.APIKey{
+		OrgID:     orgCtx.OrgID,
+		CreatedBy: authCtx.UserID,
+		Name:      agentName,
+		KeyHash:   hashStr,
+		KeyPrefix: prefix,
+		Scopes:    []string{"agent.report"},
+		AgentType: req.AgentType,
+		AgentName: agentName,
+	}
+	if err := h.apikeys.Create(r.Context(), apiKey); err != nil {
+		h.logger.Error("creating API key for provisioned agent", "error", err)
+		respondError(w, http.StatusInternalServerError, "agent created but API key generation failed")
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, map[string]any{
+		"agent":   agent,
+		"api_key": apiKey,
+		"key":     rawKey,
+	})
 }

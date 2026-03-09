@@ -91,6 +91,8 @@ export interface APIKey {
   name: string;
   key_prefix: string;
   created_by: string;
+  agent_type: string;
+  agent_name: string;
   last_used_at?: string;
   created_at: string;
   revoked_at?: string;
@@ -172,6 +174,40 @@ export interface AuditFilters {
   resource_type?: string;
   page?: number;
   per_page?: number;
+}
+
+// ---- Agent Configuration types ----
+
+export interface AgentTypeConfig {
+  id?: string;
+  org_id?: string;
+  agent_type: string;
+  config: Record<string, unknown>;
+  version: number;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AgentConfigOverride {
+  id?: string;
+  agent_id: string;
+  config: Record<string, unknown>;
+  version: number;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ConfigAuditEntry {
+  id: string;
+  target_type: 'agent_type' | 'agent';
+  target_id: string;
+  changed_by?: string;
+  previous_config?: Record<string, unknown>;
+  new_config: Record<string, unknown>;
+  version: number;
+  created_at: string;
 }
 
 export interface EventStats {

@@ -6,6 +6,7 @@ import {
   Settings,
   ScrollText,
   Key,
+  Wrench,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth-store';
@@ -13,6 +14,7 @@ import { useAuthStore } from '@/store/auth-store';
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/agents', label: 'Agents', icon: Bot },
+  { to: '/config', label: 'Configuration', icon: Wrench },
   { to: '/events', label: 'Events', icon: Activity },
   { to: '/settings', label: 'Settings', icon: Settings },
   { to: '/settings/api-keys', label: 'API Keys', icon: Key },

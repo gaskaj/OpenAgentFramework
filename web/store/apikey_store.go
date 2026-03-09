@@ -18,10 +18,10 @@ type PgAPIKeyStore struct {
 
 func (s *PgAPIKeyStore) Create(ctx context.Context, key *APIKey) error {
 	err := s.pool.QueryRow(ctx,
-		`INSERT INTO api_keys (org_id, created_by, name, key_hash, key_prefix, scopes, expires_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`INSERT INTO api_keys (org_id, created_by, name, key_hash, key_prefix, scopes, agent_type, agent_name, expires_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		 RETURNING id, created_at`,
-		key.OrgID, key.CreatedBy, key.Name, key.KeyHash, key.KeyPrefix, key.Scopes, key.ExpiresAt,
+		key.OrgID, key.CreatedBy, key.Name, key.KeyHash, key.KeyPrefix, key.Scopes, key.AgentType, key.AgentName, key.ExpiresAt,
 	).Scan(&key.ID, &key.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("creating API key: %w", err)
@@ -32,11 +32,11 @@ func (s *PgAPIKeyStore) Create(ctx context.Context, key *APIKey) error {
 func (s *PgAPIKeyStore) GetByPrefix(ctx context.Context, prefix string) (*APIKey, error) {
 	key := &APIKey{}
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, org_id, created_by, name, key_hash, key_prefix, scopes, last_used, expires_at, revoked, created_at
+		`SELECT id, org_id, created_by, name, key_hash, key_prefix, scopes, agent_type, agent_name, last_used, expires_at, revoked, created_at
 		 FROM api_keys
 		 WHERE key_prefix = $1 AND revoked = FALSE AND (expires_at IS NULL OR expires_at > NOW())`, prefix,
 	).Scan(&key.ID, &key.OrgID, &key.CreatedBy, &key.Name, &key.KeyHash, &key.KeyPrefix,
-		&key.Scopes, &key.LastUsed, &key.ExpiresAt, &key.Revoked, &key.CreatedAt)
+		&key.Scopes, &key.AgentType, &key.AgentName, &key.LastUsed, &key.ExpiresAt, &key.Revoked, &key.CreatedAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -48,7 +48,7 @@ func (s *PgAPIKeyStore) GetByPrefix(ctx context.Context, prefix string) (*APIKey
 
 func (s *PgAPIKeyStore) ListByOrg(ctx context.Context, orgID uuid.UUID) ([]APIKey, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, org_id, created_by, name, key_prefix, scopes, last_used, expires_at, revoked, created_at
+		`SELECT id, org_id, created_by, name, key_prefix, scopes, agent_type, agent_name, last_used, expires_at, revoked, created_at
 		 FROM api_keys
 		 WHERE org_id = $1 AND revoked = FALSE
 		 ORDER BY created_at DESC`, orgID,
@@ -62,12 +62,25 @@ func (s *PgAPIKeyStore) ListByOrg(ctx context.Context, orgID uuid.UUID) ([]APIKe
 	for rows.Next() {
 		var k APIKey
 		if err := rows.Scan(&k.ID, &k.OrgID, &k.CreatedBy, &k.Name, &k.KeyPrefix,
-			&k.Scopes, &k.LastUsed, &k.ExpiresAt, &k.Revoked, &k.CreatedAt); err != nil {
+			&k.Scopes, &k.AgentType, &k.AgentName, &k.LastUsed, &k.ExpiresAt, &k.Revoked, &k.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scanning API key: %w", err)
 		}
 		keys = append(keys, k)
 	}
 	return keys, nil
+}
+
+// CountByAgentType returns the number of non-revoked API keys for a given agent type in an org.
+func (s *PgAPIKeyStore) CountByAgentType(ctx context.Context, orgID uuid.UUID, agentType string) (int, error) {
+	var count int
+	err := s.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM api_keys WHERE org_id = $1 AND agent_type = $2 AND revoked = FALSE`,
+		orgID, agentType,
+	).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("counting API keys by agent type: %w", err)
+	}
+	return count, nil
 }
 
 func (s *PgAPIKeyStore) Revoke(ctx context.Context, id uuid.UUID) error {

@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Build agentctl
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          EXT=""
+          if [ "${GOOS}" = "windows" ]; then EXT=".exe"; fi
+          OUTNAME="agentctl-${GOOS}-${GOARCH}${EXT}"
+
+          go build -ldflags "\
+            -X github.com/gaskaj/OpenAgentFramework/internal/version.Version=${VERSION} \
+            -X github.com/gaskaj/OpenAgentFramework/internal/version.Commit=${COMMIT} \
+            -X github.com/gaskaj/OpenAgentFramework/internal/version.BuildDate=${BUILD_DATE}" \
+            -o "${OUTNAME}" ./cmd/agentctl
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentctl-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: agentctl-*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "Release ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/agentctl-*

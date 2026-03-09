@@ -50,5 +50,5 @@ dist/
 test-results/
 playwright-report/
 
-# Docker
-controlplane
+# Binaries
+/controlplane
